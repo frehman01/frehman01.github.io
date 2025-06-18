@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Case Study Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .explorer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #6c757d;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .filter-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-box {
+            flex: 2;
+            min-width: 300px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .content-area {
+            display: flex;
+            height: 600px;
+        }
+        
+        .case-list {
+            width: 40%;
+            border-right: 2px solid #e9ecef;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .case-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .case-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .case-card.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .case-card.compare {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+        
+        .case-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .case-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .meta-tag {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .case-metrics {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .metric {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        
+        .metric-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #28a745;
+        }
+        
+        .compare-checkbox {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .detail-view {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .detail-header {
+            margin-bottom: 30px;
+        }
+        
+        .detail-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .detail-subtitle {
+            font-size: 16px;
+            color: #6c757d;
+        }
+        
+        .detail-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .detail-content {
+            line-height: 1.8;
+            color: #495057;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .metric-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .metric-card-label {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .comparison-view {
+            display: none;
+            padding: 30px;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .comparison-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .comparison-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .comparison-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        
+        .comparison-metric:last-child {
+            border-bottom: none;
+        }
+        
+        .comparison-metric-label {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .comparison-metric-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .action-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+            background: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-btn.compare-btn {
+            background: #28a745;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .action-btn.compare-btn:hover {
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .stats-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tag.tech {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .tag.tech:hover {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .tag.outcome {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .tag.outcome:hover {
+            background: #388e3c;
+            color: white;
+        }
+        
+        .tag.challenge {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .tag.challenge:hover {
+            background: #f57c00;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="explorer-container">
+        <div class="header">
+            <h1>GenAI Cybersecurity Case Study Explorer</h1>
+            <p>Explore and compare 25 real-world implementations from 2020-2025</p>
+        </div>
+        
+        <div class="filter-section">
+            <div class="filter-group">
+                <div class="filter-label">Sector</div>
+                <select class="filter-select" id="sectorFilter">
+                    <option value="all">All Sectors</option>
+                    <option value="technology">Technology</option>
+                    <option value="financial">Financial Services</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="government">Government</option>
+                    <option value="security">Security</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <div class="filter-label">AI Technology</div>
+                <select class="filter-select" id="techFilter">
+                    <option value="all">All Technologies</option>
+                    <option value="llm">Large Language Models</option>
+                    <option value="gan">GANs</option>
+                    <option value="hybrid">Hybrid Approaches</option>
+                    <option value="agentic">Agentic AI</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <div class="filter-label">Use Case</div>
+                <select class="filter-select" id="useCaseFilter">
+                    <option value="all">All Use Cases</option>
+                    <option value="threat-detection">Threat Detection</option>
+                    <option value="soc-automation">SOC Automation</option>
+                    <option value="phishing">Phishing Prevention</option>
+                    <option value="adversarial">Adversarial Testing</option>
+                    <option value="synthetic-data">Synthetic Data</option>
+                </select>
+            </div>
+            
+            <div class="filter-group search-box">
+                <div class="filter-label">Search</div>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search by name, technology, or outcome...">
+            </div>
+        </div>
+        
+        <div class="content-area">
+            <div class="case-list" id="caseList">
+                <div class="stats-summary">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalCases">25</div>
+                        <div class="stat-label">Total Cases</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avgImprovement">62%</div>
+                        <div class="stat-label">Avg Improvement</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avgROI">287%</div>
+                        <div class="stat-label">Avg ROI</div>
+                    </div>
+                </div>
+                <div id="caseCards"></div>
+            </div>
+            
+            <div class="detail-view" id="detailView">
+                <div class="detail-header">
+                    <h2 class="detail-title">Select a case study to view details</h2>
+                    <p class="detail-subtitle">Click on any case from the list to explore its implementation details, outcomes, and lessons learned</p>
+                </div>
+            </div>
+            
+            <div class="comparison-view" id="comparisonView" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Case Study Comparison</h2>
+                <div class="comparison-grid" id="comparisonGrid"></div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button class="action-btn compare-btn" id="compareBtn" style="display: none;">Compare Selected</button>
+            <button class="action-btn" id="exportBtn">Export Data</button>
+        </div>
+    </div>
+
+    <script>
+        // Case study data
+        const caseStudies = [
+            {
+                id: 1,
+                name: "IBM Cybersecurity Assistant",
+                organization: "IBM",
+                sector: "technology",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 44,
+                accuracy: 92,
+                falsePositiveReduction: null,
+                roi: 250,
+                implementationTime: 6,
+                description: "Comprehensive GenAI deployment built on watsonx platform, processing 65+ trillion cybersecurity signals daily",
+                outcomes: [
+                    "44% more accurate responses from security analysts",
+                    "26% faster task completion across all skill levels",
+                    "Real-time threat analysis and automated ticket summarization"
+                ],
+                challenges: [
+                    "Legacy system integration complexity",
+                    "Initial training data quality issues",
+                    "Scaling to handle massive signal volume"
+                ],
+                technologies: ["Granite LLMs", "watsonx platform", "Real-time analytics"],
+                metrics: {
+                    "Daily Signals Processed": "65+ trillion",
+                    "Analyst Accuracy Improvement": "44%",
+                    "Task Completion Speed": "+26%",
+                    "Average Response Time": "< 1 second"
+                }
+            },
+            {
+                id: 2,
+                name: "CrowdStrike Charlotte AI",
+                organization: "CrowdStrike",
+                sector: "security",
+                technology: "agentic",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 600,
+                accuracy: 100,
+                falsePositiveReduction: 15,
+                roi: 450,
+                implementationTime: 3,
+                description: "Autonomous threat detection through agentic workflows, processing millions of alerts with automated triage",
+                outcomes: [
+                    "6x faster threat neutralization",
+                    "100% ransomware detection rate",
+                    "5-minute reduction per alert through AI triage"
+                ],
+                challenges: [
+                    "Managing false positive potential",
+                    "Ensuring human oversight for critical decisions",
+                    "Integration with existing Falcon platform"
+                ],
+                technologies: ["Agentic AI", "Falcon Platform", "Automated Triage"],
+                metrics: {
+                    "Threat Neutralization Speed": "6x faster",
+                    "Ransomware Detection Rate": "100%",
+                    "Alert Processing Time": "-5 min/alert",
+                    "False Positive Reduction": "15%"
+                }
+            },
+            {
+                id: 3,
+                name: "Microsoft Defender AI",
+                organization: "Microsoft",
+                sector: "technology",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 89,
+                accuracy: 95,
+                falsePositiveReduction: 22,
+                roi: 320,
+                implementationTime: 4,
+                description: "Meta-security approach using AI to protect AI applications from emerging threats",
+                outcomes: [
+                    "Real-time detection of prompt injection attacks",
+                    "Protection against data poisoning",
+                    "Automated jailbreak attack prevention"
+                ],
+                challenges: [
+                    "Ecosystem lock-in concerns",
+                    "Complexity of protecting AI with AI",
+                    "Rapid evolution of attack vectors"
+                ],
+                technologies: ["Azure AI", "Prompt Shields", "Content Safety"],
+                metrics: {
+                    "Detection Accuracy": "95%",
+                    "Real-time Response": "< 100ms",
+                    "False Positive Reduction": "22%",
+                    "AI Attack Coverage": "6 categories"
+                }
+            },
+            {
+                id: 4,
+                name: "Meta LLM Incident Response",
+                organization: "Meta",
+                sector: "technology",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 42,
+                accuracy: 42,
+                falsePositiveReduction: -5,
+                roi: 180,
+                implementationTime: 8,
+                description: "LLM-powered system achieving 42% accuracy in identifying root causes of production incidents",
+                outcomes: [
+                    "MTTR reduction from hours to seconds",
+                    "Two-phase retrieval and ranking system",
+                    "70%+ engineer satisfaction with recommendations"
+                ],
+                challenges: [
+                    "Model staleness requiring frequent updates",
+                    "Slight increase in false positives",
+                    "Complex enterprise environment integration"
+                ],
+                technologies: ["Custom LLM", "Heuristic Retrieval", "Ranking System"],
+                metrics: {
+                    "Root Cause Accuracy": "42%",
+                    "MTTR Reduction": "Hours to seconds",
+                    "Engineer Satisfaction": "70%+",
+                    "Incidents Analyzed": "40,000+"
+                }
+            },
+            {
+                id: 5,
+                name: "IBM QRadar Suite",
+                organization: "IBM",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2023,
+                improvement: 55,
+                accuracy: 85,
+                falsePositiveReduction: 30,
+                roi: 380,
+                implementationTime: 4,
+                description: "Enterprise AI implementation across 400+ Managed Security Services clients",
+                outcomes: [
+                    "55% reduction in alert triage timeline",
+                    "70%+ automation of alert closures",
+                    "$3M average reduction in breach costs"
+                ],
+                challenges: [
+                    "Complexity of multi-client deployment",
+                    "Customization requirements",
+                    "Skill gap in security teams"
+                ],
+                technologies: ["Enterprise AI", "SIEM Integration", "Automated Response"],
+                metrics: {
+                    "Alert Triage Reduction": "55%",
+                    "Automation Rate": "70%+",
+                    "Breach Cost Reduction": "$3M avg",
+                    "Client Deployments": "400+"
+                }
+            },
+            {
+                id: 6,
+                name: "Hoxhunt AI Spear Phishing",
+                organization: "Hoxhunt",
+                sector: "security",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2025,
+                improvement: 86,
+                accuracy: 124,
+                falsePositiveReduction: 40,
+                roi: 562,
+                implementationTime: 2,
+                description: "AI agent 'JKR' achieving the 'Skynet Moment' - first AI to outperform elite human red teams",
+                outcomes: [
+                    "24% more effective than human red teams",
+                    "86% reduction in phishing incidents",
+                    "6x improvement in threat reporting"
+                ],
+                challenges: [
+                    "Ethical concerns about AI superiority",
+                    "Balancing realism with safety",
+                    "Regulatory compliance"
+                ],
+                technologies: ["Advanced LLM", "Behavioral Analysis", "Adaptive Learning"],
+                metrics: {
+                    "vs Human Performance": "+24%",
+                    "Phishing Reduction": "86%",
+                    "Threat Reporting": "6x improvement",
+                    "User Coverage": "2.5M+"
+                }
+            },
+            {
+                id: 7,
+                name: "Google AI Red Team",
+                organization: "Google",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "adversarial",
+                year: 2022,
+                improvement: 75,
+                accuracy: 88,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 12,
+                description: "Systematic framework for adversarial testing across enterprise AI systems",
+                outcomes: [
+                    "6 primary attack tactics developed",
+                    "Proactive vulnerability identification",
+                    "Industry-wide methodology adoption"
+                ],
+                challenges: [
+                    "Resource intensive process",
+                    "Keeping pace with AI evolution",
+                    "Balancing security with innovation"
+                ],
+                technologies: ["Multi-modal AI", "Adversarial Testing", "Red Team Framework"],
+                metrics: {
+                    "Attack Tactics": "6 categories",
+                    "Vulnerabilities Found": "500+ critical",
+                    "Testing Coverage": "All AI products",
+                    "Team Size": "100+ experts"
+                }
+            },
+            {
+                id: 8,
+                name: "DARPA SABER Program",
+                organization: "DARPA",
+                sector: "government",
+                technology: "hybrid",
+                useCase: "adversarial",
+                year: 2024,
+                improvement: null,
+                accuracy: null,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 36,
+                description: "Military AI red teams for assessing autonomous ground and aerial systems",
+                outcomes: [
+                    "Battlefield environment testing",
+                    "Physical adversarial attack assessment",
+                    "Electronic warfare integration"
+                ],
+                challenges: [
+                    "Classification limitations",
+                    "Real-world testing constraints",
+                    "Cross-domain complexity"
+                ],
+                technologies: ["Military AI", "Autonomous Systems", "EW Integration"],
+                metrics: {
+                    "Program Duration": "3 years",
+                    "System Types": "Ground & Aerial",
+                    "Testing Scenarios": "Classified",
+                    "Investment": "$100M+"
+                }
+            },
+            {
+                id: 9,
+                name: "PassGAN Implementation",
+                organization: "Stevens Institute",
+                sector: "academic",
+                technology: "gan",
+                useCase: "synthetic-data",
+                year: 2024,
+                improvement: 47,
+                accuracy: 47,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 12,
+                description: "Wasserstein GAN for password security testing, outperforming traditional tools",
+                outcomes: [
+                    "47% match rate on test datasets",
+                    "2x better than John the Ripper",
+                    "51-73% more passwords cracked with HashCat"
+                ],
+                challenges: [
+                    "Limited scope to password testing",
+                    "Ethical use concerns",
+                    "Dataset privacy issues"
+                ],
+                technologies: ["Wasserstein GAN", "Password Analysis", "Security Testing"],
+                metrics: {
+                    "Match Rate": "47%",
+                    "vs Traditional Tools": "2x better",
+                    "Combined Performance": "+51-73%",
+                    "Training Dataset": "10M+ passwords"
+                }
+            },
+            {
+                id: 10,
+                name: "Singapore GTA GPT-3 Study",
+                organization: "Government Technology Agency",
+                sector: "government",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2021,
+                improvement: 35,
+                accuracy: 78,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 3,
+                description: "Early evidence of GenAI potential in social engineering attacks",
+                outcomes: [
+                    "Higher click rates than human-crafted emails",
+                    "Incorporation of local context",
+                    "Demonstrated low barrier to entry"
+                ],
+                challenges: [
+                    "Ethical testing constraints",
+                    "Limited sample size",
+                    "Regulatory compliance"
+                ],
+                technologies: ["GPT-3", "Email Generation", "Social Engineering"],
+                metrics: {
+                    "Click Rate Improvement": "35%",
+                    "Test Participants": "200+",
+                    "Email Variants": "50+",
+                    "Context Accuracy": "78%"
+                }
+            },
+            {
+                id: 11,
+                name: "Deutsche Bank Fraud Detection",
+                organization: "Deutsche Bank",
+                sector: "financial",
+                technology: "hybrid",
+                useCase: "threat-detection",
+                year: 2023,
+                improvement: 65,
+                accuracy: 94,
+                falsePositiveReduction: 45,
+                roi: 420,
+                implementationTime: 9,
+                description: "Real-time fraud detection system processing millions of transactions",
+                outcomes: [
+                    "65% improvement in fraud detection",
+                    "Real-time transaction analysis",
+                    "45% reduction in false positives"
+                ],
+                challenges: [
+                    "Regulatory compliance complexity",
+                    "Legacy system integration",
+                    "Cross-border data regulations"
+                ],
+                technologies: ["Hybrid AI", "Real-time Processing", "Transaction Analysis"],
+                metrics: {
+                    "Detection Improvement": "65%",
+                    "Processing Speed": "< 50ms",
+                    "False Positive Reduction": "45%",
+                    "Daily Transactions": "10M+"
+                }
+            },
+            {
+                id: 12,
+                name: "University of Rochester Medical",
+                organization: "URMC",
+                sector: "healthcare",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 72,
+                accuracy: 89,
+                falsePositiveReduction: 28,
+                roi: 280,
+                implementationTime: 12,
+                description: "AI-powered security for medical imaging and patient data protection",
+                outcomes: [
+                    "862 AI-powered imaging probes deployed",
+                    "3x expansion planned by 2026",
+                    "HIPAA-compliant implementation"
+                ],
+                challenges: [
+                    "Patient privacy requirements",
+                    "Medical device integration",
+                    "Regulatory approval process"
+                ],
+                technologies: ["Medical AI", "Imaging Security", "HIPAA Compliance"],
+                metrics: {
+                    "Imaging Probes": "862 deployed",
+                    "Threat Detection": "+72%",
+                    "Compliance Rate": "100%",
+                    "Expansion Plan": "3x by 2026"
+                }
+            },
+            {
+                id: 13,
+                name: "D3 Smart SOAR Platform",
+                organization: "D3 Security",
+                sector: "security",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 90,
+                accuracy: 92,
+                falsePositiveReduction: 55,
+                roi: 485,
+                implementationTime: 3,
+                description: "Comprehensive SOAR platform achieving 90%+ alert volume reduction",
+                outcomes: [
+                    "90%+ reduction in alert volume",
+                    "Automated playbook execution",
+                    "Multi-tenant architecture support"
+                ],
+                challenges: [
+                    "Complex integration requirements",
+                    "Customization for different clients",
+                    "Skill gap in deployment teams"
+                ],
+                technologies: ["SOAR", "Automated Playbooks", "Multi-tenant Architecture"],
+                metrics: {
+                    "Alert Reduction": "90%+",
+                    "Automation Rate": "92%",
+                    "Client Onboarding": "30 days",
+                    "Playbook Library": "500+"
+                }
+            },
+            {
+                id: 14,
+                name: "KnowBe4 AIDA Platform",
+                organization: "KnowBe4",
+                sector: "security",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2024,
+                improvement: 85,
+                accuracy: 91,
+                falsePositiveReduction: 38,
+                roi: 562,
+                implementationTime: 1,
+                description: "Enterprise-scale phishing simulation and training platform",
+                outcomes: [
+                    "Phish-prone reduction from 33.2% to 5.4%",
+                    "50M+ phishing simulations annually",
+                    "2.5M+ users across 125 countries"
+                ],
+                challenges: [
+                    "Cultural adaptation requirements",
+                    "Maintaining simulation realism",
+                    "User fatigue management"
+                ],
+                technologies: ["AI-driven Simulations", "Behavioral Analytics", "Training Platform"],
+                metrics: {
+                    "Phish-prone Reduction": "85%",
+                    "Annual Simulations": "50M+",
+                    "Global Users": "2.5M+",
+                    "ROI": "562%"
+                }
+            },
+            {
+                id: 15,
+                name: "JP Morgan Chase Automation",
+                organization: "JP Morgan Chase",
+                sector: "financial",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2023,
+                improvement: 78,
+                accuracy: 93,
+                falsePositiveReduction: 42,
+                roi: 395,
+                implementationTime: 6,
+                description: "Loan processing automation with integrated security analysis",
+                outcomes: [
+                    "Processing time reduced from days to minutes",
+                    "Integrated fraud detection",
+                    "Maintained security standards"
+                ],
+                challenges: [
+                    "Regulatory compliance",
+                    "Data privacy concerns",
+                    "System reliability requirements"
+                ],
+                technologies: ["Process Automation", "Fraud Detection", "LLM Integration"],
+                metrics: {
+                    "Processing Speed": "Days to minutes",
+                    "Accuracy Rate": "93%",
+                    "Cost Reduction": "78%",
+                    "Annual Volume": "1M+ loans"
+                }
+            },
+            {
+                id: 16,
+                name: "Wells Fargo False Positive Reduction",
+                organization: "Wells Fargo",
+                sector: "financial",
+                technology: "hybrid",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 52,
+                accuracy: 88,
+                falsePositiveReduction: 68,
+                roi: 340,
+                implementationTime: 7,
+                description: "Focused implementation addressing false positive reduction in fraud detection",
+                outcomes: [
+                    "68% reduction in false positives",
+                    "Improved customer experience",
+                    "Reduced operational costs"
+                ],
+                challenges: [
+                    "Balancing security with UX",
+                    "Legacy system constraints",
+                    "Regulatory scrutiny"
+                ],
+                technologies: ["Hybrid Detection", "Customer Analytics", "Risk Scoring"],
+                metrics: {
+                    "False Positive Reduction": "68%",
+                    "Customer Satisfaction": "+25%",
+                    "Operational Cost": "-52%",
+                    "Daily Transactions": "15M+"
+                }
+            },
+            {
+                id: 17,
+                name: "Royal Bank of Scotland Training",
+                organization: "RBS",
+                sector: "financial",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2024,
+                improvement: 78,
+                accuracy: 85,
+                falsePositiveReduction: 32,
+                roi: 425,
+                implementationTime: 5,
+                description: "Comprehensive organizational engagement beyond technical implementation",
+                outcomes: [
+                    "78% reduction in phishing susceptibility",
+                    "80,000 employees trained",
+                    "Cultural transformation achieved"
+                ],
+                challenges: [
+                    "Scale of deployment",
+                    "Multi-language requirements",
+                    "Measuring behavioral change"
+                ],
+                technologies: ["LLM Training", "Behavioral Analytics", "Gamification"],
+                metrics: {
+                    "Susceptibility Reduction": "78%",
+                    "Employees Trained": "80,000",
+                    "Engagement Rate": "95%",
+                    "Retention Rate": "85%"
+                }
+            },
+            {
+                id: 18,
+                name: "TidalHealth Clinical Search",
+                organization: "TidalHealth",
+                sector: "healthcare",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 75,
+                accuracy: 91,
+                falsePositiveReduction: null,
+                roi: 265,
+                implementationTime: 4,
+                description: "IBM Watson integration reducing clinical search time",
+                outcomes: [
+                    "Search time reduced from 3-4 minutes to <1 minute",
+                    "Improved clinical decision support",
+                    "Enhanced security monitoring"
+                ],
+                challenges: [
+                    "Clinical workflow integration",
+                    "Data privacy requirements",
+                    "User adoption"
+                ],
+                technologies: ["IBM Watson", "Clinical NLP", "Security Analytics"],
+                metrics: {
+                    "Search Time Reduction": "75%",
+                    "Accuracy": "91%",
+                    "User Adoption": "88%",
+                    "Daily Searches": "10,000+"
+                }
+            },
+            {
+                id: 19,
+                name: "AWS SageMaker Synthetic Data",
+                organization: "Amazon",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 96,
+                accuracy: 99.6,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 2,
+                description: "Industrial-scale synthetic cybersecurity dataset generation",
+                outcomes: [
+                    "99.6% accuracy with synthetic datasets",
+                    "Scalable to millions of samples",
+                    "Privacy-preserving approach"
+                ],
+                challenges: [
+                    "Ensuring dataset realism",
+                    "Computational costs",
+                    "Validation complexity"
+                ],
+                technologies: ["SageMaker", "Synthetic Generation", "Privacy Tech"],
+                metrics: {
+                    "Accuracy": "99.6%",
+                    "Dataset Scale": "10M+ samples",
+                    "Generation Speed": "100K/hour",
+                    "Privacy Compliance": "100%"
+                }
+            },
+            {
+                id: 20,
+                name: "Azure ML Responsible AI",
+                organization: "Microsoft",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 89,
+                accuracy: 94,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 3,
+                description: "Responsible AI framework with built-in differential privacy",
+                outcomes: [
+                    "Integrated differential privacy",
+                    "Bias detection and mitigation",
+                    "Explainable AI features"
+                ],
+                challenges: [
+                    "Performance vs privacy trade-offs",
+                    "Complexity of responsible AI",
+                    "Regulatory compliance"
+                ],
+                technologies: ["Azure ML", "Differential Privacy", "Explainable AI"],
+                metrics: {
+                    "Model Accuracy": "94%",
+                    "Privacy Guarantee": "ε=2.0",
+                    "Bias Reduction": "89%",
+                    "Compliance Rate": "100%"
+                }
+            },
+            {
+                id: 21,
+                name: "OpenAI Multi-Modal Red Team",
+                organization: "OpenAI",
+                sector: "technology",
+                technology: "llm",
+                useCase: "adversarial",
+                year: 2023,
+                improvement: null,
+                accuracy: null,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 18,
+                description: "External expert network for AI safety testing",
+                outcomes: [
+                    "100+ red teamers for GPT-4",
+                    "500,000+ test conversations",
+                    "Automated safety test generation"
+                ],
+                challenges: [
+                    "Coordinating external experts",
+                    "Maintaining consistency",
+                    "Balancing capability vs safety"
+                ],
+                technologies: ["Multi-modal AI", "Safety Testing", "Red Team Network"],
+                metrics: {
+                    "Red Team Size": "100+ experts",
+                    "Test Conversations": "500K+",
+                    "Safety Issues Found": "1000+",
+                    "Fix Rate": "95%"
+                }
+            },
+            {
+                id: 22,
+                name: "Vertex AI Privacy Trade-offs",
+                organization: "Google",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 89.9,
+                accuracy: 89.9,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 3,
+                description: "Balanced privacy-utility trade-offs for enterprise deployment",
+                outcomes: [
+                    "89.9% accuracy with privacy guarantees",
+                    "Automated privacy budgeting",
+                    "Enterprise-scale deployment"
+                ],
+                challenges: [
+                    "Privacy-utility balance",
+                    "Customer education",
+                    "Integration complexity"
+                ],
+                technologies: ["Vertex AI", "Privacy Computing", "AutoML"],
+                metrics: {
+                    "Model Accuracy": "89.9%",
+                    "Privacy Budget": "Automated",
+                    "Deployment Scale": "Enterprise",
+                    "Customer Adoption": "1000+"
+                }
+            },
+            {
+                id: 23,
+                name: "DARPA Unraveled Dataset",
+                organization: "DARPA",
+                sector: "government",
+                technology: "gan",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: null,
+                accuracy: null,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 24,
+                description: "First comprehensive semi-synthetic APT dataset",
+                outcomes: [
+                    "6-week organizational simulation",
+                    "Realistic behavior patterns",
+                    "Undetected APT sequences"
+                ],
+                challenges: [
+                    "Simulation realism",
+                    "Computational requirements",
+                    "Validation methodology"
+                ],
+                technologies: ["Employee Behavior Generation", "APT Simulation", "Synthetic Data"],
+                metrics: {
+                    "Simulation Duration": "6 weeks",
+                    "Behavioral Patterns": "10,000+",
+                    "APT Scenarios": "50+",
+                    "Detection Rate": "< 5%"
+                }
+            },
+            {
+                id: 24,
+                name: "Swimlane Turbine Automation",
+                organization: "Swimlane",
+                sector: "security",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 83,
+                accuracy: 90,
+                falsePositiveReduction: 48,
+                roi: 410,
+                implementationTime: 1,
+                description: "Automated 30-day client onboarding process",
+                outcomes: [
+                    "30-day automated onboarding",
+                    "83% process improvement",
+                    "Outcome-based pricing enabled"
+                ],
+                challenges: [
+                    "Client customization needs",
+                    "Integration variety",
+                    "SLA guarantees"
+                ],
+                technologies: ["Process Automation", "SOAR Platform", "Low-code Integration"],
+                metrics: {
+                    "Onboarding Time": "30 days",
+                    "Process Improvement": "83%",
+                    "Client Satisfaction": "94%",
+                    "SLA Achievement": "99.5%"
+                }
+            },
+            {
+                id: 25,
+                name: "MDPI GenAI Framework",
+                organization: "Academic Consortium",
+                sector: "academic",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2025,
+                improvement: 95,
+                accuracy: 95,
+                falsePositiveReduction: null,
+                roi: null,
+                implementationTime: 18,
+                description: "Multi-domain approach combining GANs, VAEs, and traditional ML",
+                outcomes: [
+                    "94-96% accuracy across domains",
+                    "GDPR/CCPA compliance maintained",
+                    "Cross-sector applicability"
+                ],
+                challenges: [
+                    "Multi-domain complexity",
+                    "Privacy regulation compliance",
+                    "Academic-industry gap"
+                ],
+                technologies: ["GANs", "VAEs", "Random Forest", "LSTM"],
+                metrics: {
+                    "Cross-domain Accuracy": "94-96%",
+                    "Privacy Compliance": "100%",
+                    "Domains Covered": "3",
+                    "Research Citations": "50+"
+                }
+            }
+        ];
+
+        // Initialize the explorer
+        let selectedCases = [];
+        let filteredCases = [...caseStudies];
+
+        // Render case cards
+        function renderCaseCards() {
+            const container = document.getElementById('caseCards');
+            container.innerHTML = '';
+
+            if (filteredCases.length === 0) {
+                container.innerHTML = '<div class="no-results">No cases match your filters. Try adjusting your search criteria.</div>';
+                return;
+            }
+
+            filteredCases.forEach(caseStudy => {
+                const card = document.createElement('div');
+                card.className = 'case-card';
+                card.dataset.id = caseStudy.id;
+                
+                card.innerHTML = `
+                    <input type="checkbox" class="compare-checkbox" onclick="toggleCompare(${caseStudy.id}, event)">
+                    <h3 class="case-title">${caseStudy.name}</h3>
+                    <div class="case-meta">
+                        <span class="meta-tag">${caseStudy.sector}</span>
+                        <span class="meta-tag">${caseStudy.year}</span>
+                        <span class="meta-tag">${caseStudy.technology.toUpperCase()}</span>
+                    </div>
+                    <p style="color: #6c757d; font-size: 14px; margin-bottom: 10px;">${caseStudy.organization}</p>
+                    <div class="case-metrics">
+                        ${caseStudy.improvement ? `
+                            <div class="metric">
+                                <div class="metric-label">Improvement</div>
+                                <div class="metric-value">${caseStudy.improvement}%</div>
+                            </div>
+                        ` : ''}
+                        ${caseStudy.roi ? `
+                            <div class="metric">
+                                <div class="metric-label">ROI</div>
+                                <div class="metric-value">${caseStudy.roi}%</div>
+                            </div>
+                        ` : ''}
+                        ${caseStudy.implementationTime ? `
+                            <div class="metric">
+                                <div class="metric-label">Time</div>
+                                <div class="metric-value">${caseStudy.implementationTime}mo</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                card.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('compare-checkbox')) {
+                        selectCase(caseStudy.id);
+                    }
+                });
+
+                container.appendChild(card);
+            });
+
+            updateStats();
+        }
+
+        // Select a case for detailed view
+        function selectCase(id) {
+            const caseStudy = caseStudies.find(c => c.id === id);
+            if (!caseStudy) return;
+
+            // Update selection state
+            document.querySelectorAll('.case-card').forEach(card => {
+                card.classList.remove('selected');
+                if (parseInt(card.dataset.id) === id) {
+                    card.classList.add('selected');
+                }
+            });
+
+            // Show comparison view if comparing, otherwise show detail view
+            if (selectedCases.length > 1) {
+                showComparison();
+            } else {
+                showCaseDetail(caseStudy);
+            }
+        }
+
+        // Show case detail
+        function showCaseDetail(caseStudy) {
+            document.getElementById('detailView').style.display = 'block';
+            document.getElementById('comparisonView').style.display = 'none';
+
+            const detailView = document.getElementById('detailView');
+            detailView.innerHTML = `
+                <div class="detail-header">
+                    <h2 class="detail-title">${caseStudy.name}</h2>
+                    <p class="detail-subtitle">${caseStudy.organization} • ${caseStudy.year} • ${caseStudy.sector}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-title">Overview</h3>
+                    <div class="detail-content">${caseStudy.description}</div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-title">Key Metrics</h3>
+                    <div class="metrics-grid">
+                        ${Object.entries(caseStudy.metrics).map(([key, value]) => `
+                            <div class="metric-card">
+                                <div class="metric-card-value">${value}</div>
+                                <div class="metric-card-label">${key}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-title">Outcomes</h3>
+                    <div class="detail-content">
+                        <ul style="line-height: 2; padding-left: 20px;">
+                            ${caseStudy.outcomes.map(outcome => `<li>${outcome}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-title">Challenges</h3>
+                    <div class="detail-content">
+                        <ul style="line-height: 2; padding-left: 20px;">
+                            ${caseStudy.challenges.map(challenge => `<li>${challenge}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3 class="section-title">Technologies Used</h3>
+                    <div class="tag-cloud">
+                        ${caseStudy.technologies.map(tech => `<span class="tag tech">${tech}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggle case comparison
+        function toggleCompare(id, event) {
+            event.stopPropagation();
+            const index = selectedCases.indexOf(id);
+            
+            if (index > -1) {
+                selectedCases.splice(index, 1);
+            } else {
+                selectedCases.push(id);
+            }
+
+            // Update card styling
+            const card = document.querySelector(`[data-id="${id}"]`);
+            if (selectedCases.includes(id)) {
+                card.classList.add('compare');
+            } else {
+                card.classList.remove('compare');
+            }
+
+            // Show/hide compare button
+            const compareBtn = document.getElementById('compareBtn');
+            if (selectedCases.length > 1) {
+                compareBtn.style.display = 'block';
+            } else {
+                compareBtn.style.display = 'none';
+            }
+        }
+
+        // Show comparison view
+        function showComparison() {
+            document.getElementById('detailView').style.display = 'none';
+            document.getElementById('comparisonView').style.display = 'block';
+
+            const comparisonGrid = document.getElementById('comparisonGrid');
+            comparisonGrid.innerHTML = '';
+
+            const selectedCaseStudies = caseStudies.filter(c => selectedCases.includes(c.id));
+
+            selectedCaseStudies.forEach(caseStudy => {
+                const card = document.createElement('div');
+                card.className = 'comparison-card';
+                
+                card.innerHTML = `
+                    <h3 class="comparison-card-title">${caseStudy.name}</h3>
+                    <div class="comparison-metric">
+                        <span class="comparison-metric-label">Organization</span>
+                        <span class="comparison-metric-value">${caseStudy.organization}</span>
+                    </div>
+                    <div class="comparison-metric">
+                        <span class="comparison-metric-label">Sector</span>
+                        <span class="comparison-metric-value">${caseStudy.sector}</span>
+                    </div>
+                    <div class="comparison-metric">
+                        <span class="comparison-metric-label">Technology</span>
+                        <span class="comparison-metric-value">${caseStudy.technology.toUpperCase()}</span>
+                    </div>
+                    <div class="comparison-metric">
+                        <span class="comparison-metric-label">Use Case</span>
+                        <span class="comparison-metric-value">${caseStudy.useCase}</span>
+                    </div>
+                    ${caseStudy.improvement ? `
+                        <div class="comparison-metric">
+                            <span class="comparison-metric-label">Improvement</span>
+                            <span class="comparison-metric-value">${caseStudy.improvement}%</span>
+                        </div>
+                    ` : ''}
+                    ${caseStudy.accuracy ? `
+                        <div class="comparison-metric">
+                            <span class="comparison-metric-label">Accuracy</span>
+                            <span class="comparison-metric-value">${caseStudy.accuracy}%</span>
+                        </div>
+                    ` : ''}
+                    ${caseStudy.roi ? `
+                        <div class="comparison-metric">
+                            <span class="comparison-metric-label">ROI</span>
+                            <span class="comparison-metric-value">${caseStudy.roi}%</span>
+                        </div>
+                    ` : ''}
+                    <div class="comparison-metric">
+                        <span class="comparison-metric-label">Implementation</span>
+                        <span class="comparison-metric-value">${caseStudy.implementationTime} months</span>
+                    </div>
+                `;
+
+                comparisonGrid.appendChild(card);
+            });
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalCases = filteredCases.length;
+            const avgImprovement = filteredCases.filter(c => c.improvement).reduce((sum, c) => sum + c.improvement, 0) / filteredCases.filter(c => c.improvement).length || 0;
+            const avgROI = filteredCases.filter(c => c.roi).reduce((sum, c) => sum + c.roi, 0) / filteredCases.filter(c => c.roi).length || 0;
+
+            document.getElementById('totalCases').textContent = totalCases;
+            document.getElementById('avgImprovement').textContent = Math.round(avgImprovement) + '%';
+            document.getElementById('avgROI').textContent = Math.round(avgROI) + '%';
+        }
+
+        // Filter functionality
+        function applyFilters() {
+            const sectorFilter = document.getElementById('sectorFilter').value;
+            const techFilter = document.getElementById('techFilter').value;
+            const useCaseFilter = document.getElementById('useCaseFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            filteredCases = caseStudies.filter(caseStudy => {
+                const matchesSector = sectorFilter === 'all' || caseStudy.sector === sectorFilter;
+                const matchesTech = techFilter === 'all' || caseStudy.technology === techFilter;
+                const matchesUseCase = useCaseFilter === 'all' || caseStudy.useCase === useCaseFilter;
+                const matchesSearch = !searchTerm || 
+                    caseStudy.name.toLowerCase().includes(searchTerm) ||
+                    caseStudy.organization.toLowerCase().includes(searchTerm) ||
+                    caseStudy.description.toLowerCase().includes(searchTerm) ||
+                    caseStudy.technologies.some(t => t.toLowerCase().includes(searchTerm));
+
+                return matchesSector && matchesTech && matchesUseCase && matchesSearch;
+            });
+
+            renderCaseCards();
+        }
+
+        // Export functionality
+        function exportData() {
+            const exportData = {
+                metadata: {
+                    exportDate: new Date().toISOString(),
+                    totalCases: caseStudies.length,
+                    filters: {
+                        sector: document.getElementById('sectorFilter').value,
+                        technology: document.getElementById('techFilter').value,
+                        useCase: document.getElementById('useCaseFilter').value,
+                        search: document.getElementById('searchInput').value
+                    }
+                },
+                cases: filteredCases
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `genai-cybersecurity-cases-${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        // Event listeners
+        document.getElementById('sectorFilter').addEventListener('change', applyFilters);
+        document.getElementById('techFilter').addEventListener('change', applyFilters);
+        document.getElementById('useCaseFilter').addEventListener('change', applyFilters);
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('compareBtn').addEventListener('click', showComparison);
+        document.getElementById('exportBtn').addEventListener('click', exportData);
+
+        // Initialize
+        renderCaseCards();
+    </script>
+</body>
+</html>
