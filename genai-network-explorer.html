@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Network Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #0a0e27;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            display: block;
+            opacity: 0.8;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .control-btn {
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .control-btn.active {
+            background: rgba(100,200,255,0.3);
+            border-color: #64c8ff;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            z-index: 100;
+        }
+        
+        .info-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #64c8ff;
+        }
+        
+        .info-content {
+            font-size: 14px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .node:hover {
+            filter: brightness(1.5);
+        }
+        
+        .node-label {
+            font-size: 12px;
+            text-anchor: middle;
+            pointer-events: none;
+            fill: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+        
+        .link {
+            fill: none;
+            stroke-opacity: 0.4;
+            transition: all 0.3s;
+        }
+        
+        .link.highlighted {
+            stroke-opacity: 1;
+            stroke-width: 3;
+        }
+        
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            max-width: 200px;
+            box-shadow: 0 0 20px rgba(100,200,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">GenAI Cybersecurity Network Explorer</div>
+            <div class="subtitle">Explore relationships between AI technologies, threats, and implementations</div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-label">View Mode</div>
+                <div class="control-buttons">
+                    <button class="control-btn active" data-mode="all">All Connections</button>
+                    <button class="control-btn" data-mode="tech">By Technology</button>
+                    <button class="control-btn" data-mode="threat">By Threat</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="control-label">Layout</div>
+                <div class="control-buttons">
+                    <button class="control-btn active" data-layout="force">Force</button>
+                    <button class="control-btn" data-layout="radial">Radial</button>
+                    <button class="control-btn" data-layout="hierarchical">Hierarchical</button>
+                </div>
+            </div>
+        </div>
+        
+        <svg id="network"></svg>
+        
+        <div class="info-panel">
+            <div class="info-title">Network Overview</div>
+            <div class="info-content">
+                This network visualization shows the complex relationships between Generative AI technologies (blue nodes), cybersecurity threats (red nodes), and real-world implementations (green nodes). Click on any node to explore its connections and details. Use the controls to change view modes and layouts.
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #64c8ff;"></div>
+                <span>AI Technologies</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6464;"></div>
+                <span>Cyber Threats</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #64ff64;"></div>
+                <span>Implementations</span>
+            </div>
+        </div>
+        
+        <div class="tooltip"></div>
+    </div>
+
+    <script>
+        // Network data structure
+        const networkData = {
+            nodes: [
+                // AI Technologies (blue)
+                { id: "llm", label: "Large Language Models", type: "tech", description: "Foundation models like GPT for natural language processing in security contexts" },
+                { id: "gan", label: "GANs", type: "tech", description: "Generative Adversarial Networks for synthetic data and adversarial testing" },
+                { id: "vae", label: "VAEs", type: "tech", description: "Variational Autoencoders for anomaly detection and data generation" },
+                { id: "transformer", label: "Transformers", type: "tech", description: "Attention-based models for sequence analysis and pattern recognition" },
+                { id: "diffusion", label: "Diffusion Models", type: "tech", description: "Probabilistic models for synthetic security data generation" },
+                
+                // Cyber Threats (red)
+                { id: "phishing", label: "Phishing Attacks", type: "threat", description: "Social engineering attacks via deceptive communications" },
+                { id: "malware", label: "Malware", type: "threat", description: "Malicious software including ransomware and trojans" },
+                { id: "apt", label: "APT Attacks", type: "threat", description: "Advanced Persistent Threats from sophisticated actors" },
+                { id: "insider", label: "Insider Threats", type: "threat", description: "Security risks from authorized users" },
+                { id: "ddos", label: "DDoS Attacks", type: "threat", description: "Distributed Denial of Service attacks" },
+                { id: "injection", label: "Injection Attacks", type: "threat", description: "Code injection, SQL injection, and prompt injection" },
+                { id: "zero-day", label: "Zero-Day Exploits", type: "threat", description: "Previously unknown vulnerabilities" },
+                
+                // Implementations (green)
+                { id: "ibm-qradar", label: "IBM QRadar", type: "impl", description: "AI-powered SIEM with 55% faster triage" },
+                { id: "crowdstrike", label: "CrowdStrike Charlotte", type: "impl", description: "Autonomous threat detection with 6x faster response" },
+                { id: "ms-defender", label: "MS Defender AI", type: "impl", description: "AI protecting AI with real-time detection" },
+                { id: "meta-llm", label: "Meta Incident Response", type: "impl", description: "42% accuracy in root cause analysis" },
+                { id: "hoxhunt", label: "Hoxhunt AI", type: "impl", description: "AI surpassing human red teams in phishing" },
+                { id: "google-red", label: "Google AI Red Team", type: "impl", description: "Systematic adversarial testing framework" },
+                { id: "darpa-saber", label: "DARPA SABER", type: "impl", description: "Military AI assessment program" },
+                { id: "passgan", label: "PassGAN", type: "impl", description: "Password security testing with 47% match rate" }
+            ],
+            links: [
+                // Technology to Threat connections
+                { source: "llm", target: "phishing", strength: 0.9, description: "LLMs generate sophisticated phishing content" },
+                { source: "llm", target: "injection", strength: 0.8, description: "Prompt injection attacks on LLM systems" },
+                { source: "gan", target: "malware", strength: 0.9, description: "GANs create polymorphic malware variants" },
+                { source: "gan", target: "apt", strength: 0.7, description: "GANs simulate APT behaviors" },
+                { source: "vae", target: "insider", strength: 0.6, description: "VAEs detect anomalous user behavior" },
+                { source: "transformer", target: "zero-day", strength: 0.7, description: "Transformers analyze code for vulnerabilities" },
+                
+                // Implementation to Technology connections
+                { source: "ibm-qradar", target: "llm", strength: 0.8, description: "Uses Granite LLMs for analysis" },
+                { source: "crowdstrike", target: "llm", strength: 0.7, description: "Agentic AI for threat detection" },
+                { source: "ms-defender", target: "llm", strength: 0.9, description: "Azure AI integration" },
+                { source: "meta-llm", target: "llm", strength: 0.9, description: "Custom LLM for incidents" },
+                { source: "hoxhunt", target: "llm", strength: 0.8, description: "AI-powered phishing agent" },
+                { source: "google-red", target: "gan", strength: 0.6, description: "Adversarial testing" },
+                { source: "darpa-saber", target: "gan", strength: 0.7, description: "Military adversarial AI" },
+                { source: "passgan", target: "gan", strength: 0.9, description: "Wasserstein GAN architecture" },
+                
+                // Implementation to Threat connections
+                { source: "hoxhunt", target: "phishing", strength: 0.9, description: "86% phishing reduction" },
+                { source: "crowdstrike", target: "malware", strength: 0.9, description: "100% ransomware detection" },
+                { source: "ibm-qradar", target: "apt", strength: 0.7, description: "Advanced threat detection" },
+                { source: "meta-llm", target: "ddos", strength: 0.5, description: "Incident response automation" },
+                { source: "ms-defender", target: "injection", strength: 0.8, description: "Prompt shield protection" },
+                { source: "google-red", target: "zero-day", strength: 0.6, description: "Proactive vulnerability discovery" }
+            ]
+        };
+
+        // Set up dimensions
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Create SVG
+        const svg = d3.select("#network");
+        const g = svg.append("g");
+
+        // Create tooltip
+        const tooltip = d3.select(".tooltip");
+
+        // Color scales
+        const colorScale = {
+            tech: "#64c8ff",
+            threat: "#ff6464",
+            impl: "#64ff64"
+        };
+
+        // Create force simulation
+        let simulation = d3.forceSimulation(networkData.nodes)
+            .force("link", d3.forceLink(networkData.links).id(d => d.id).distance(150))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(30));
+
+        // Create links
+        const links = g.append("g")
+            .selectAll("line")
+            .data(networkData.links)
+            .join("line")
+            .attr("class", "link")
+            .attr("stroke", "#ffffff")
+            .attr("stroke-width", d => d.strength * 3);
+
+        // Create nodes
+        const nodes = g.append("g")
+            .selectAll("g")
+            .data(networkData.nodes)
+            .join("g")
+            .attr("class", "node")
+            .call(drag(simulation));
+
+        // Add circles to nodes
+        nodes.append("circle")
+            .attr("r", d => d.type === "impl" ? 25 : 20)
+            .attr("fill", d => colorScale[d.type])
+            .attr("stroke", "#ffffff")
+            .attr("stroke-width", 2);
+
+        // Add labels to nodes
+        nodes.append("text")
+            .attr("class", "node-label")
+            .attr("dy", 35)
+            .text(d => d.label);
+
+        // Node interaction
+        nodes.on("click", function(event, d) {
+            highlightConnections(d);
+            updateInfoPanel(d);
+        })
+        .on("mouseover", function(event, d) {
+            tooltip
+                .style("opacity", 1)
+                .html(`<strong>${d.label}</strong><br>${d.description}`)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.style("opacity", 0);
+        });
+
+        // Update positions on tick
+        simulation.on("tick", () => {
+            links
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            nodes.attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+        // Zoom functionality
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        // Drag functionality
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+
+        // Highlight connections
+        function highlightConnections(node) {
+            const connectedNodes = new Set();
+            const connectedLinks = new Set();
+
+            networkData.links.forEach(link => {
+                if (link.source.id === node.id || link.target.id === node.id) {
+                    connectedNodes.add(link.source.id);
+                    connectedNodes.add(link.target.id);
+                    connectedLinks.add(link);
+                }
+            });
+
+            // Update node opacity
+            nodes.style("opacity", d => connectedNodes.has(d.id) ? 1 : 0.2);
+
+            // Update link highlighting
+            links
+                .classed("highlighted", d => connectedLinks.has(d))
+                .style("stroke-opacity", d => connectedLinks.has(d) ? 1 : 0.1);
+        }
+
+        // Update info panel
+        function updateInfoPanel(node) {
+            const connections = networkData.links.filter(l => 
+                l.source.id === node.id || l.target.id === node.id
+            );
+
+            let html = `<div class="info-title">${node.label}</div>`;
+            html += `<div class="info-content">${node.description}<br><br>`;
+            html += `<strong>Connections:</strong><br>`;
+            
+            connections.forEach(conn => {
+                const otherNode = conn.source.id === node.id ? conn.target : conn.source;
+                html += `• ${otherNode.label}: ${conn.description}<br>`;
+            });
+            
+            html += `</div>`;
+            
+            document.querySelector(".info-panel").innerHTML = html;
+        }
+
+        // Control panel interactions
+        document.querySelectorAll(".control-btn").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const group = this.parentElement;
+                group.querySelectorAll(".control-btn").forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+
+                if (this.dataset.mode) {
+                    updateViewMode(this.dataset.mode);
+                } else if (this.dataset.layout) {
+                    updateLayout(this.dataset.layout);
+                }
+            });
+        });
+
+        // Update view mode
+        function updateViewMode(mode) {
+            if (mode === "all") {
+                nodes.style("opacity", 1);
+                links.style("stroke-opacity", 0.4);
+            } else if (mode === "tech") {
+                nodes.style("opacity", d => d.type === "tech" || d.type === "impl" ? 1 : 0.2);
+                links.style("stroke-opacity", d => 
+                    (d.source.type === "tech" || d.target.type === "tech") ? 0.4 : 0.1
+                );
+            } else if (mode === "threat") {
+                nodes.style("opacity", d => d.type === "threat" || d.type === "impl" ? 1 : 0.2);
+                links.style("stroke-opacity", d => 
+                    (d.source.type === "threat" || d.target.type === "threat") ? 0.4 : 0.1
+                );
+            }
+        }
+
+        // Update layout
+        function updateLayout(layout) {
+            simulation.stop();
+
+            if (layout === "force") {
+                simulation = d3.forceSimulation(networkData.nodes)
+                    .force("link", d3.forceLink(networkData.links).id(d => d.id).distance(150))
+                    .force("charge", d3.forceManyBody().strength(-300))
+                    .force("center", d3.forceCenter(width / 2, height / 2))
+                    .force("collision", d3.forceCollide().radius(30));
+            } else if (layout === "radial") {
+                const radius = Math.min(width, height) / 3;
+                const techNodes = networkData.nodes.filter(n => n.type === "tech");
+                const threatNodes = networkData.nodes.filter(n => n.type === "threat");
+                const implNodes = networkData.nodes.filter(n => n.type === "impl");
+
+                // Position nodes in circles
+                techNodes.forEach((n, i) => {
+                    const angle = (i / techNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * 0.5 * Math.cos(angle);
+                    n.fy = height/2 + radius * 0.5 * Math.sin(angle);
+                });
+
+                threatNodes.forEach((n, i) => {
+                    const angle = (i / threatNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * Math.cos(angle);
+                    n.fy = height/2 + radius * Math.sin(angle);
+                });
+
+                implNodes.forEach((n, i) => {
+                    const angle = (i / implNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * 1.5 * Math.cos(angle);
+                    n.fy = height/2 + radius * 1.5 * Math.sin(angle);
+                });
+
+                simulation = d3.forceSimulation(networkData.nodes)
+                    .force("link", d3.forceLink(networkData.links).id(d => d.id).distance(150));
+            } else if (layout === "hierarchical") {
+                // Create hierarchical layout
+                const techY = height * 0.2;
+                const threatY = height * 0.5;
+                const implY = height * 0.8;
+
+                networkData.nodes.forEach(n => {
+                    if (n.type === "tech") {
+                        n.fy = techY;
+                    } else if (n.type === "threat") {
+                        n.fy = threatY;
+                    } else {
+                        n.fy = implY;
+                    }
+                });
+
+                simulation = d3.forceSimulation(networkData.nodes)
+                    .force("link", d3.forceLink(networkData.links).id(d => d.id).distance(150))
+                    .force("x", d3.forceX(width / 2).strength(0.1));
+            }
+
+            simulation.on("tick", () => {
+                links
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                nodes.attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+
+            simulation.alpha(1).restart();
+        }
+    </script>
+</body>
+</html>
