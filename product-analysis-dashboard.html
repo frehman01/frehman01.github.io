@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Cybersecurity Research Dashboard | Product Analysis (2020-2025)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Navigation */
+        .nav {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: #f0f2f5;
+        }
+
+        .nav-item.active {
+            background: #2a5298;
+            color: white;
+        }
+
+        .export-btn {
+            margin-left: auto;
+            background: #10b981;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .export-btn:hover {
+            background: #059669;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+        }
+
+        /* Grid Layouts */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        /* Product Cards */
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            border-color: #2a5298;
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .product-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        .product-category {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .category-ai-security {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .category-ai-enhanced {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .product-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .filter-select, .search-input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: white;
+        }
+
+        .search-input {
+            min-width: 300px;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 1rem 0;
+        }
+
+        .chart-container-small {
+            height: 300px;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-close:hover {
+            color: #374151;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .nav {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .export-btn {
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Print Styles */
+        @media print {
+            .nav, .filters, .export-btn, .modal-close {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                page-break-after: always;
+            }
+
+            .card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GenAI Cybersecurity Research Dashboard | Product Analysis</h1>
+        <p>Comprehensive Analysis of AI Security Products (2020-2025)</p>
+    </div>
+
+    <nav class="nav">
+        <div class="nav-item active" onclick="showSection('overview')">Overview</div>
+        <div class="nav-item" onclick="showSection('products')">Products</div>
+        <div class="nav-item" onclick="showSection('comparison')">Comparison</div>
+        <div class="nav-item" onclick="showSection('market')">Market Analysis</div>
+        <div class="nav-item" onclick="showSection('trends')">Trends</div>
+        <button class="export-btn" onclick="exportData()">Export Report</button>
+    </nav>
+
+    <div class="container">
+        <!-- Overview Section -->
+        <section id="overview" class="section active">
+            <div class="grid grid-4">
+                <div class="card stat-card">
+                    <div class="stat-value">13</div>
+                    <div class="stat-label">Products Analyzed</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">$142B</div>
+                    <div class="stat-label">Market Size by 2032</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">150%</div>
+                    <div class="stat-label">Market Growth (2020-2025)</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">300%</div>
+                    <div class="stat-label">Max MTTR Improvement</div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-header">Market Growth Trajectory</h3>
+                    <div class="chart-container">
+                        <canvas id="marketGrowthChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-header">Product Category Distribution</h3>
+                    <div class="chart-container chart-container-small">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-header">Executive Summary</h3>
+                <p style="margin-bottom: 1rem;">The generative AI cybersecurity market has experienced explosive growth from 2020 to 2025, fundamentally transforming how organizations approach security operations. This comprehensive analysis examines 13 leading products across two critical categories:</p>
+                <ul style="margin-left: 2rem; margin-bottom: 1rem;">
+                    <li><strong>Cybersecurity of AI:</strong> Products designed to protect AI systems from adversarial attacks (6 products)</li>
+                    <li><strong>Cybersecurity using AI:</strong> Solutions leveraging AI to enhance security operations (7 products)</li>
+                </ul>
+                <p>Key findings indicate that organizations implementing AI-enhanced security platforms report improvements ranging from 40% to 300% in critical metrics such as Mean Time to Respond (MTTR) and threat detection accuracy.</p>
+            </div>
+        </section>
+
+        <!-- Products Section -->
+        <section id="products" class="section">
+            <div class="filters">
+                <div class="filter-group">
+                    <label class="filter-label">Search Products</label>
+                    <input type="text" class="search-input" placeholder="Search by name, vendor, or feature..." onkeyup="filterProducts()">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Category</label>
+                    <select class="filter-select" onchange="filterProducts()">
+                        <option value="all">All Categories</option>
+                        <option value="ai-security">Cybersecurity of AI</option>
+                        <option value="ai-enhanced">Cybersecurity using AI</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Deployment Model</label>
+                    <select class="filter-select" onchange="filterProducts()">
+                        <option value="all">All Models</option>
+                        <option value="cloud">Cloud-Native</option>
+                        <option value="on-premises">On-Premises</option>
+                        <option value="hybrid">Hybrid</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="productsGrid" class="grid grid-3">
+                <!-- Products will be dynamically loaded here -->
+            </div>
+        </section>
+
+        <!-- Comparison Section -->
+        <section id="comparison" class="section">
+            <div class="card">
+                <h3 class="card-header">Feature Comparison Matrix</h3>
+                <div class="table-wrapper">
+                    <table id="comparisonTable">
+                        <!-- Table will be dynamically loaded -->
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-header">Performance Metrics Comparison</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-header">Capability Assessment Heatmap</h3>
+                <div id="heatmap"></div>
+            </div>
+        </section>
+
+        <!-- Market Analysis Section -->
+        <section id="market" class="section">
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-header">Market Share by Vendor</h3>
+                    <div class="chart-container">
+                        <canvas id="marketShareChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-header">Investment & Acquisitions</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Company</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Protect AI</td>
+                                    <td>Acquisition by Palo Alto</td>
+                                    <td>$650-700M</td>
+                                    <td>April 2025</td>
+                                </tr>
+                                <tr>
+                                    <td>Prompt Security</td>
+                                    <td>Series A Funding</td>
+                                    <td>$23M</td>
+                                    <td>2024</td>
+                                </tr>
+                                <tr>
+                                    <td>TrojAI</td>
+                                    <td>Seed Funding</td>
+                                    <td>$5.75M</td>
+                                    <td>2024</td>
+                                </tr>
+                                <tr>
+                                    <td>Wiz</td>
+                                    <td>Series E Funding</td>
+                                    <td>$1B</td>
+                                    <td>2024</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-header">Regional Market Distribution</h3>
+                <div class="chart-container chart-container-small">
+                    <canvas id="regionalChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trends Section -->
+        <section id="trends" class="section">
+            <div class="card">
+                <h3 class="card-header">Evolution Timeline (2020-2025)</h3>
+                <div id="timeline"></div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-header">Key Innovation Trends</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+                            <strong>🚀 Autonomous SOCs:</strong> Evolution from automated to fully autonomous security operations
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+                            <strong>🧠 Multi-Model Architecture:</strong> Ensemble AI using specialized models for different threats
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+                            <strong>🔐 Privacy-Preserving AI:</strong> Federated learning for collaborative threat intelligence
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+                            <strong>💡 Explainable AI:</strong> Interpretable models for regulatory compliance
+                        </li>
+                        <li style="padding: 0.75rem 0;">
+                            <strong>⚛️ Quantum-Ready:</strong> Post-quantum cryptography integration
+                        </li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-header">Research Priority Matrix</h3>
+                    <div id="priorityMatrix"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="card-header">Future Outlook (2025-2030)</h3>
+                <p>The AI cybersecurity landscape is poised for continued transformation with several key developments on the horizon:</p>
+                <ul style="margin: 1rem 2rem;">
+                    <li>Market projected to reach $140-220 billion by 2032</li>
+                    <li>Convergence of XDR and SIEM platforms accelerating</li>
+                    <li>Agentic AI systems becoming mainstream</li>
+                    <li>Increased focus on AI governance and compliance</li>
+                    <li>Growing importance of human-AI collaboration models</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent">
+                <!-- Product details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Product Data
+        const products = [
+            // Category I: Cybersecurity of AI
+            {
+                id: 1,
+                name: "Cisco AI Defense",
+                vendor: "Cisco Systems",
+                category: "ai-security",
+                deployment: "cloud",
+                architecture: "Network-Centric",
+                primaryFocus: "Network Security",
+                attackDetection: "200+ attack types",
+                integration: "Cisco ecosystem",
+                compliance: ["NIST", "MITRE", "OWASP"],
+                scalability: "Enterprise network",
+                pricing: "Subscription-based",
+                description: "Comprehensive network-level AI security leveraging Cisco's infrastructure expertise.",
+                keyFeatures: [
+                    "Visibility Engine for AI discovery",
+                    "Security Models Suite with LLMs/SLMs",
+                    "Network-level interceptors",
+                    "Cisco Talos threat intelligence",
+                    "Algorithmic red teaming"
+                ],
+                performance: {
+                    falsePositiveReduction: "Not disclosed",
+                    deploymentTime: "< 1 week",
+                    coverage: "94% reduction in unauthorized AI usage"
+                }
+            },
+            {
+                id: 2,
+                name: "Wiz AI-SPM",
+                vendor: "Wiz",
+                category: "ai-security",
+                deployment: "cloud",
+                architecture: "Cloud-Native",
+                primaryFocus: "Cloud Security",
+                attackDetection: "Attack path analysis",
+                integration: "Multi-cloud native",
+                compliance: ["PCI", "HIPAA", "GDPR"],
+                scalability: "Unlimited cloud",
+                pricing: "Usage-based",
+                description: "Cloud-native AI Security Posture Management for multi-cloud environments.",
+                keyFeatures: [
+                    "AI Bill of Materials (AI-BOM)",
+                    "Shadow AI detection",
+                    "IaC scanning",
+                    "DSPM for AI",
+                    "Agentless architecture"
+                ],
+                performance: {
+                    falsePositiveReduction: "Context-based",
+                    deploymentTime: "< 24 hours",
+                    coverage: "1,247 risks remediated in 48 hours"
+                }
+            },
+            {
+                id: 3,
+                name: "TrojAI",
+                vendor: "TrojAI",
+                category: "ai-security",
+                deployment: "on-premises",
+                architecture: "Model-Centric",
+                primaryFocus: "Model Security",
+                attackDetection: "150+ built-in tests",
+                integration: "MLOps workflows",
+                compliance: ["Enterprise custom"],
+                scalability: "High-throughput",
+                pricing: "License-based",
+                description: "Intelligence community-derived platform for AI model security.",
+                keyFeatures: [
+                    "TrojAI Detect for model testing",
+                    "TrojAI Defend AI firewall",
+                    "Trojan detection",
+                    "100M tokens/sec processing",
+                    "Self-hosted deployment"
+                ],
+                performance: {
+                    falsePositiveReduction: "Customizable",
+                    deploymentTime: "2-4 weeks",
+                    coverage: "15 attacks prevented in first month"
+                }
+            },
+            {
+                id: 4,
+                name: "AIShield SecureAIx",
+                vendor: "Bosch AIShield",
+                category: "ai-security",
+                deployment: "hybrid",
+                architecture: "Unified Platform",
+                primaryFocus: "ML Model Protection",
+                attackDetection: "200+ attack variations",
+                integration: "SIEM/SOAR native",
+                compliance: ["EU AI Act ready"],
+                scalability: "Auto-scaling",
+                pricing: "Tiered licensing",
+                description: "Holistic AI security platform with three integrated modules.",
+                keyFeatures: [
+                    "Watchtower (open-source)",
+                    "AISpectra vulnerability assessment",
+                    "Guardian runtime protection",
+                    "ML/GenAI dual engines",
+                    "Supply chain security"
+                ],
+                performance: {
+                    falsePositiveReduction: "<5% reported",
+                    deploymentTime: "1-2 weeks",
+                    coverage: "90% vulnerability reduction"
+                }
+            },
+            {
+                id: 5,
+                name: "Protect AI Platform",
+                vendor: "Protect AI (Palo Alto)",
+                category: "ai-security",
+                deployment: "cloud",
+                architecture: "MLSecOps",
+                primaryFocus: "Supply Chain",
+                attackDetection: "35+ model formats",
+                integration: "Hugging Face native",
+                compliance: ["Open source base"],
+                scalability: "Distributed scanning",
+                pricing: "Per-model pricing",
+                description: "Pioneering MLSecOps platform with open-source tools.",
+                keyFeatures: [
+                    "Layer runtime security",
+                    "Guardian model gateway",
+                    "ModelScan tool",
+                    "LLM Guard (2.5M downloads/month)",
+                    "huntr bug bounty platform"
+                ],
+                performance: {
+                    falsePositiveReduction: "Community validated",
+                    deploymentTime: "< 1 week",
+                    coverage: "Industry-standard coverage"
+                }
+            },
+            {
+                id: 6,
+                name: "Prompt Security",
+                vendor: "Prompt Security",
+                category: "ai-security",
+                deployment: "cloud",
+                architecture: "GenAI-Specific",
+                primaryFocus: "GenAI Applications",
+                attackDetection: "Prompt injection focus",
+                integration: "1000+ AI tools",
+                compliance: ["OWASP leadership"],
+                scalability: "Millions of prompts",
+                pricing: "Seat-based",
+                description: "Comprehensive GenAI security for enterprise deployments.",
+                keyFeatures: [
+                    "Employee Protection",
+                    "Homegrown GenAI Apps security",
+                    "AI Code Assistants protection",
+                    "Agentic AI Governance",
+                    "Data leakage prevention"
+                ],
+                performance: {
+                    falsePositiveReduction: "Dynamic adjustment",
+                    deploymentTime: "< 48 hours",
+                    coverage: "75% of GenAI usage secured"
+                }
+            },
+            // Category II: Cybersecurity using AI
+            {
+                id: 7,
+                name: "Trend Micro Vision One",
+                vendor: "Trend Micro",
+                category: "ai-enhanced",
+                deployment: "cloud",
+                architecture: "AI-Native XDR",
+                primaryFocus: "Unified Security",
+                attackDetection: "Cybertron AI (8B parameters)",
+                integration: "Native XDR",
+                compliance: ["Multiple frameworks"],
+                scalability: "10,000+ enterprises",
+                pricing: "Credit-based",
+                description: "Industry's first proactive cybersecurity AI platform.",
+                keyFeatures: [
+                    "Trend Cybertron AI",
+                    "35 years threat intelligence",
+                    "Unified XDR approach",
+                    "NVIDIA NIM integration",
+                    "Open-source components"
+                ],
+                performance: {
+                    mttdImprovement: "Not specified",
+                    mttrImprovement: "Hours to seconds",
+                    alertReduction: "86% actionable rate"
+                }
+            },
+            {
+                id: 8,
+                name: "Trellix Platform",
+                vendor: "Trellix",
+                category: "ai-enhanced",
+                deployment: "hybrid",
+                architecture: "Ensemble AI",
+                primaryFocus: "Multi-Vector Defense",
+                attackDetection: "33 ML models",
+                integration: "Unified platform",
+                compliance: ["Enterprise-grade"],
+                scalability: "100M+ endpoints",
+                pricing: "Endpoint-based",
+                description: "Ensemble AI platform from McAfee-FireEye merger.",
+                keyFeatures: [
+                    "Trellix Wise engine",
+                    "33 specialized ML models",
+                    "68B daily queries",
+                    "100% SE Labs score",
+                    "Cross-customer learning"
+                ],
+                performance: {
+                    mttdImprovement: "Significant",
+                    mttrImprovement: "300% improvement",
+                    alertReduction: "90% triage efficiency"
+                }
+            },
+            {
+                id: 9,
+                name: "Microsoft Defender XDR & Sentinel",
+                vendor: "Microsoft",
+                category: "ai-enhanced",
+                deployment: "cloud",
+                architecture: "Unified Platform",
+                primaryFocus: "Ecosystem Security",
+                attackDetection: "GPT-4 integration",
+                integration: "Microsoft ecosystem",
+                compliance: ["Comprehensive"],
+                scalability: "Cloud-scale",
+                pricing: "Consumption-based",
+                description: "Unified security platform with Security Copilot integration.",
+                keyFeatures: [
+                    "Security Copilot with GPT-4",
+                    "Automatic Attack Disruption",
+                    "Unified XDR+SIEM",
+                    "Cross-product visibility",
+                    "Natural language queries"
+                ],
+                performance: {
+                    mttdImprovement: "40% faster",
+                    mttrImprovement: "88% reduction",
+                    alertReduction: "Context-dependent"
+                }
+            },
+            {
+                id: 10,
+                name: "Darktrace Enterprise Immune System",
+                vendor: "Darktrace",
+                category: "ai-enhanced",
+                deployment: "hybrid",
+                architecture: "Self-Learning AI",
+                primaryFocus: "Behavioral Analytics",
+                attackDetection: "Unsupervised ML",
+                integration: "Multi-domain",
+                compliance: ["Industry standards"],
+                scalability: "10,000+ customers",
+                pricing: "Device-based",
+                description: "Immune system-inspired autonomous security platform.",
+                keyFeatures: [
+                    "Self-learning AI",
+                    "Cyber AI Analyst",
+                    "Antigena autonomous response",
+                    "No signatures/rules needed",
+                    "92% triage reduction"
+                ],
+                performance: {
+                    mttdImprovement: "Within seconds",
+                    mttrImprovement: "Immediate response",
+                    alertReduction: "Varies by tuning"
+                }
+            },
+            {
+                id: 11,
+                name: "CrowdStrike Falcon",
+                vendor: "CrowdStrike",
+                category: "ai-enhanced",
+                deployment: "cloud",
+                architecture: "Cloud-Native",
+                primaryFocus: "Endpoint Security",
+                attackDetection: "Charlotte AI",
+                integration: "490+ integrations",
+                compliance: ["Multiple standards"],
+                scalability: "1T+ daily events",
+                pricing: "Per-endpoint",
+                description: "AI-native endpoint security with Charlotte AI assistant.",
+                keyFeatures: [
+                    "Charlotte AI assistant",
+                    "Single lightweight agent",
+                    "Threat Graph processing",
+                    "98% triage accuracy",
+                    "Human-AI collaboration"
+                ],
+                performance: {
+                    mttdImprovement: "75% faster",
+                    mttrImprovement: "52% improvement",
+                    alertReduction: "98% triage accuracy"
+                }
+            },
+            {
+                id: 12,
+                name: "Vectra AI Platform",
+                vendor: "Vectra AI",
+                category: "ai-enhanced",
+                deployment: "cloud",
+                architecture: "Attack-Focused AI",
+                primaryFocus: "Identity Attacks",
+                attackDetection: "Attack Signal Intelligence",
+                integration: "SIEM/SOAR native",
+                compliance: ["Enterprise-ready"],
+                scalability: "80M+ users (Globe)",
+                pricing: "Coverage-based",
+                description: "Behavioral analytics platform focused on attack detection.",
+                keyFeatures: [
+                    "Attack Signal Intelligence",
+                    "Identity attack focus",
+                    "Behavioral analytics",
+                    "99% noise reduction",
+                    "Gartner Leader rating"
+                ],
+                performance: {
+                    mttdImprovement: "99% faster for identity",
+                    mttrImprovement: "Days to minutes",
+                    alertReduction: "99% noise reduction"
+                }
+            },
+            {
+                id: 13,
+                name: "Palo Alto Cortex XSIAM",
+                vendor: "Palo Alto Networks",
+                category: "ai-enhanced",
+                deployment: "cloud",
+                architecture: "Autonomous SOC",
+                primaryFocus: "SOC Automation",
+                attackDetection: "1,300+ AI models",
+                integration: "Unified architecture",
+                compliance: ["Comprehensive"],
+                scalability: "5 PB daily",
+                pricing: "Platform licensing",
+                description: "Extended Security Intelligence & Automation Management platform.",
+                keyFeatures: [
+                    "Precision AI framework",
+                    "BYOML support",
+                    "Converged SIEM/XDR/SOAR",
+                    "Autonomous operations",
+                    "IBM QRadar migration"
+                ],
+                performance: {
+                    mttdImprovement: "Not specified",
+                    mttrImprovement: "85% faster",
+                    alertReduction: "75% incident reduction"
+                }
+            }
+        ];
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+            initializeCharts();
+            loadComparisonTable();
+            createTimeline();
+            createPriorityMatrix();
+        });
+
+        // Navigation
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Add active class to clicked nav item
+            event.target.classList.add('active');
+        }
+
+        // Load products
+        function loadProducts() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = products.map(product => `
+                <div class="product-card" onclick="showProductDetail(${product.id})">
+                    <div class="product-header">
+                        <h3 class="product-name">${product.name}</h3>
+                        <span class="product-category ${product.category === 'ai-security' ? 'category-ai-security' : 'category-ai-enhanced'}">
+                            ${product.category === 'ai-security' ? 'AI Security' : 'AI-Enhanced'}
+                        </span>
+                    </div>
+                    <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 1rem;">${product.vendor}</p>
+                    <div class="product-metric">
+                        <span class="metric-label">Architecture</span>
+                        <span class="metric-value">${product.architecture}</span>
+                    </div>
+                    <div class="product-metric">
+                        <span class="metric-label">Deployment</span>
+                        <span class="metric-value">${product.deployment.charAt(0).toUpperCase() + product.deployment.slice(1)}</span>
+                    </div>
+                    <div class="product-metric">
+                        <span class="metric-label">Primary Focus</span>
+                        <span class="metric-value">${product.primaryFocus}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter products
+        function filterProducts() {
+            const searchTerm = document.querySelector('.search-input').value.toLowerCase();
+            const categoryFilter = document.querySelectorAll('.filter-select')[0].value;
+            const deploymentFilter = document.querySelectorAll('.filter-select')[1].value;
+            
+            const filteredProducts = products.filter(product => {
+                const matchesSearch = product.name.toLowerCase().includes(searchTerm) ||
+                                    product.vendor.toLowerCase().includes(searchTerm) ||
+                                    product.primaryFocus.toLowerCase().includes(searchTerm);
+                const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+                const matchesDeployment = deploymentFilter === 'all' || product.deployment === deploymentFilter;
+                
+                return matchesSearch && matchesCategory && matchesDeployment;
+            });
+            
+            const grid = document.getElementById('productsGrid');
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = '<div class="loading">No products match your criteria</div>';
+            } else {
+                grid.innerHTML = filteredProducts.map(product => `
+                    <div class="product-card" onclick="showProductDetail(${product.id})">
+                        <div class="product-header">
+                            <h3 class="product-name">${product.name}</h3>
+                            <span class="product-category ${product.category === 'ai-security' ? 'category-ai-security' : 'category-ai-enhanced'}">
+                                ${product.category === 'ai-security' ? 'AI Security' : 'AI-Enhanced'}
+                            </span>
+                        </div>
+                        <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 1rem;">${product.vendor}</p>
+                        <div class="product-metric">
+                            <span class="metric-label">Architecture</span>
+                            <span class="metric-value">${product.architecture}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Deployment</span>
+                            <span class="metric-value">${product.deployment.charAt(0).toUpperCase() + product.deployment.slice(1)}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Primary Focus</span>
+                            <span class="metric-value">${product.primaryFocus}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Show product detail
+        function showProductDetail(productId) {
+            const product = products.find(p => p.id === productId);
+            const modal = document.getElementById('productModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.innerHTML = `
+                <h2 style="margin-bottom: 1rem; color: #1e3c72;">${product.name}</h2>
+                <p style="color: #6b7280; margin-bottom: 2rem;">${product.vendor} | ${product.category === 'ai-security' ? 'Cybersecurity of AI' : 'Cybersecurity using AI'}</p>
+                
+                <h3 style="margin-bottom: 1rem;">Overview</h3>
+                <p style="margin-bottom: 2rem;">${product.description}</p>
+                
+                <div class="grid grid-2" style="margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 0.5rem;">Technical Specifications</h4>
+                        <div class="product-metric">
+                            <span class="metric-label">Architecture</span>
+                            <span class="metric-value">${product.architecture}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Deployment Model</span>
+                            <span class="metric-value">${product.deployment.charAt(0).toUpperCase() + product.deployment.slice(1)}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Attack Detection</span>
+                            <span class="metric-value">${product.attackDetection}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Integration</span>
+                            <span class="metric-value">${product.integration}</span>
+                        </div>
+                        <div class="product-metric">
+                            <span class="metric-label">Scalability</span>
+                            <span class="metric-value">${product.scalability}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 0.5rem;">Performance Metrics</h4>
+                        ${product.performance.mttdImprovement ? `
+                            <div class="product-metric">
+                                <span class="metric-label">MTTD Improvement</span>
+                                <span class="metric-value">${product.performance.mttdImprovement}</span>
+                            </div>
+                            <div class="product-metric">
+                                <span class="metric-label">MTTR Improvement</span>
+                                <span class="metric-value">${product.performance.mttrImprovement}</span>
+                            </div>
+                            <div class="product-metric">
+                                <span class="metric-label">Alert Reduction</span>
+                                <span class="metric-value">${product.performance.alertReduction}</span>
+                            </div>
+                        ` : `
+                            <div class="product-metric">
+                                <span class="metric-label">False Positive Reduction</span>
+                                <span class="metric-value">${product.performance.falsePositiveReduction}</span>
+                            </div>
+                            <div class="product-metric">
+                                <span class="metric-label">Deployment Time</span>
+                                <span class="metric-value">${product.performance.deploymentTime}</span>
+                            </div>
+                            <div class="product-metric">
+                                <span class="metric-label">Coverage</span>
+                                <span class="metric-value">${product.performance.coverage}</span>
+                            </div>
+                        `}
+                    </div>
+                </div>
+                
+                <h3 style="margin-bottom: 1rem;">Key Features</h3>
+                <ul style="margin-left: 2rem; margin-bottom: 2rem;">
+                    ${product.keyFeatures.map(feature => `<li style="margin-bottom: 0.5rem;">${feature}</li>`).join('')}
+                </ul>
+                
+                <h3 style="margin-bottom: 1rem;">Compliance</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    ${product.compliance.map(comp => `
+                        <span style="background: #e0f2fe; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem;">
+                            ${comp}
+                        </span>
+                    `).join('')}
+                </div>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('productModal').classList.remove('active');
+        }
+
+        // Initialize Charts
+        function initializeCharts() {
+            Chart.register(ChartDataLabels);
+
+            // Market Growth Chart
+            const marketCtx = document.getElementById('marketGrowthChart').getContext('2d');
+            new Chart(marketCtx, {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', '2025', '2026', '2028', '2030', '2032'],
+                    datasets: [{
+                        label: 'Market Value (Billions USD)',
+                        data: [10, 12, 15, 19, 25, 32, 45, 72, 105, 142],
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            display: true,
+                            align: 'top',
+                            anchor: 'end',
+                            offset: 5,
+                            color: '#1e40af',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value) => '$' + value + 'B',
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            borderColor: '#1e40af',
+                            borderRadius: 4,
+                            borderWidth: 1,
+                            padding: 4
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 160,
+                            title: { display: true, text: 'Market Value (Billions USD)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Year' }
+                        }
+                    }
+                }
+            });
+
+            // Category Distribution Chart
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cybersecurity of AI', 'Cybersecurity using AI'],
+                    datasets: [{
+                        data: [6, 7],
+                        backgroundColor: ['#3b82f6', '#10b981']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            display: true,
+                            color: 'white',
+                            font: { weight: 'bold', size: 16 },
+                            formatter: (value) => value
+                        }
+                    }
+                }
+            });
+
+            // Performance Metrics Comparison
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(perfCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Trend Micro', 'Microsoft', 'Darktrace', 'CrowdStrike', 'Vectra AI'],
+                    datasets: [
+                        {
+                            label: 'MTTD Improvement (%)',
+                            data: [65, 40, 80, 75, 99],
+                            backgroundColor: '#3b82f6'
+                        },
+                        {
+                            label: 'MTTR Improvement (%)',
+                            data: [70, 45, 85, 52, 90],
+                            backgroundColor: '#10b981'
+                        },
+                        {
+                            label: 'Alert Reduction (%)',
+                            data: [86, 60, 75, 98, 99],
+                            backgroundColor: '#f59e0b'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: true,
+                            color: function(context) {
+                                const value = context.dataset.data[context.dataIndex];
+                                return value > 50 ? 'white' : '#1f2937';
+                            },
+                            anchor: function(context) {
+                                const value = context.dataset.data[context.dataIndex];
+                                return value > 50 ? 'center' : 'end';
+                            },
+                            align: function(context) {
+                                const value = context.dataset.data[context.dataIndex];
+                                return value > 50 ? 'center' : 'top';
+                            },
+                            font: { weight: 'bold', size: 10 },
+                            formatter: (value) => value + '%'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 110,
+                            title: { display: true, text: 'Improvement (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Market Share Chart
+            const marketShareCtx = document.getElementById('marketShareChart').getContext('2d');
+            new Chart(marketShareCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Microsoft', 'Palo Alto', 'CrowdStrike', 'Darktrace', 'Others'],
+                    datasets: [{
+                        data: [22, 18, 15, 10, 35],
+                        backgroundColor: ['#2563eb', '#7c3aed', '#dc2626', '#16a34a', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        datalabels: {
+                            display: true,
+                            color: 'white',
+                            font: { weight: 'bold' },
+                            formatter: (value) => value + '%'
+                        }
+                    }
+                }
+            });
+
+            // Regional Distribution Chart
+            const regionalCtx = document.getElementById('regionalChart').getContext('2d');
+            new Chart(regionalCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['North America', 'Europe', 'Asia Pacific', 'Rest of World'],
+                    datasets: [{
+                        label: 'Market Share (%)',
+                        data: [42, 28, 22, 8],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#6b7280']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            display: true,
+                            anchor: 'end',
+                            align: 'end',
+                            color: '#374151',
+                            font: { weight: 'bold' },
+                            formatter: (value) => value + '%'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 50,
+                            title: { display: true, text: 'Market Share (%)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load Comparison Table
+        function loadComparisonTable() {
+            const table = document.getElementById('comparisonTable');
+            
+            const features = ['Deployment Model', 'Architecture', 'Primary Focus', 'Attack Detection', 'Integration', 'Scalability'];
+            
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        ${products.slice(0, 6).map(p => `<th>${p.name}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${features.map(feature => `
+                        <tr>
+                            <td><strong>${feature}</strong></td>
+                            ${products.slice(0, 6).map(p => {
+                                let value = '';
+                                switch(feature) {
+                                    case 'Deployment Model':
+                                        value = p.deployment.charAt(0).toUpperCase() + p.deployment.slice(1);
+                                        break;
+                                    case 'Architecture':
+                                        value = p.architecture;
+                                        break;
+                                    case 'Primary Focus':
+                                        value = p.primaryFocus;
+                                        break;
+                                    case 'Attack Detection':
+                                        value = p.attackDetection;
+                                        break;
+                                    case 'Integration':
+                                        value = p.integration;
+                                        break;
+                                    case 'Scalability':
+                                        value = p.scalability;
+                                        break;
+                                }
+                                return `<td>${value}</td>`;
+                            }).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        }
+
+        // Create Timeline
+        function createTimeline() {
+            const timeline = document.getElementById('timeline');
+            
+            const events = [
+                { year: 2020, event: 'Basic ML Anomaly Detection', description: 'Traditional machine learning for pattern recognition' },
+                { year: 2021, event: 'Advanced Threat Correlation', description: 'Multi-source data correlation and analysis' },
+                { year: 2022, event: 'Natural Language Interfaces', description: 'Conversational AI for security operations' },
+                { year: 2023, event: 'Generative AI Integration', description: 'LLMs and generative models for threat analysis' },
+                { year: 2024, event: 'Autonomous Response', description: 'AI-driven automated threat containment' },
+                { year: 2025, event: 'Agentic AI Systems', description: 'Fully autonomous security operations' }
+            ];
+            
+            timeline.innerHTML = `
+                <div style="position: relative; padding: 2rem 0;">
+                    <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #e5e7eb;"></div>
+                    <div style="display: flex; justify-content: space-between; position: relative;">
+                        ${events.map((event, index) => `
+                            <div style="flex: 1; text-align: center; position: relative;">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: #2563eb; border-radius: 50%; border: 3px solid white;"></div>
+                                <div style="margin-bottom: 40px;">
+                                    <div style="font-weight: bold; color: #2563eb;">${event.year}</div>
+                                    <div style="font-weight: 600; margin: 0.5rem 0;">${event.event}</div>
+                                    <div style="font-size: 0.85rem; color: #6b7280;">${event.description}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Create Priority Matrix
+        function createPriorityMatrix() {
+            const matrix = document.getElementById('priorityMatrix');
+            
+            const width = 400;
+            const height = 300;
+            const margin = { top: 20, right: 20, bottom: 40, left: 40 };
+            
+            const svg = d3.select(matrix)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            const xScale = d3.scaleLinear().domain([0, 10]).range([0, width]);
+            const yScale = d3.scaleLinear().domain([0, 10]).range([height, 0]);
+            
+            // Add axes
+            svg.append('g')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale));
+            
+            svg.append('g')
+                .call(d3.axisLeft(yScale));
+            
+            // Add axis labels
+            svg.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('x', width / 2)
+                .attr('y', height + 35)
+                .text('Technical Feasibility →');
+            
+            svg.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -height / 2)
+                .attr('y', -25)
+                .text('Potential Impact →');
+            
+            // Add quadrant lines
+            svg.append('line')
+                .attr('x1', xScale(5))
+                .attr('x2', xScale(5))
+                .attr('y1', 0)
+                .attr('y2', height)
+                .attr('stroke', '#e5e7eb')
+                .attr('stroke-dasharray', '3,3');
+            
+            svg.append('line')
+                .attr('x1', 0)
+                .attr('x2', width)
+                .attr('y1', yScale(5))
+                .attr('y2', yScale(5))
+                .attr('stroke', '#e5e7eb')
+                .attr('stroke-dasharray', '3,3');
+            
+            // Research priorities
+            const priorities = [
+                { name: 'Autonomous SOC', x: 7.5, y: 9, color: '#10b981' },
+                { name: 'Quantum-AI Security', x: 3.5, y: 9.5, color: '#ef4444' },
+                { name: 'Federated Learning', x: 8, y: 7.5, color: '#10b981' },
+                { name: 'Explainable AI', x: 6.5, y: 8.5, color: '#f59e0b' },
+                { name: 'AI vs AI Conflict', x: 5, y: 9, color: '#ef4444' }
+            ];
+            
+            // Add dots
+            svg.selectAll('circle')
+                .data(priorities)
+                .enter()
+                .append('circle')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', 8)
+                .attr('fill', d => d.color)
+                .attr('opacity', 0.8)
+                .style('cursor', 'pointer');
+            
+            // Add labels
+            svg.selectAll('text.priority')
+                .data(priorities)
+                .enter()
+                .append('text')
+                .attr('x', d => xScale(d.x))
+                .attr('y', d => yScale(d.y) + 20)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '10px')
+                .text(d => d.name);
+        }
+
+        // Export functionality
+        function exportData() {
+            // Prepare data for export
+            const exportData = {
+                summary: {
+                    totalProducts: products.length,
+                    aiSecurityProducts: products.filter(p => p.category === 'ai-security').length,
+                    aiEnhancedProducts: products.filter(p => p.category === 'ai-enhanced').length,
+                    marketSize2032: '$142 Billion',
+                    marketGrowth: '150% (2020-2025)'
+                },
+                products: products.map(p => ({
+                    Name: p.name,
+                    Vendor: p.vendor,
+                    Category: p.category === 'ai-security' ? 'Cybersecurity of AI' : 'Cybersecurity using AI',
+                    Architecture: p.architecture,
+                    Deployment: p.deployment,
+                    'Primary Focus': p.primaryFocus,
+                    'Attack Detection': p.attackDetection,
+                    Integration: p.integration,
+                    Compliance: p.compliance.join(', '),
+                    Scalability: p.scalability
+                }))
+            };
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Add summary sheet
+            const summaryWs = XLSX.utils.json_to_sheet([exportData.summary]);
+            XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+            
+            // Add products sheet
+            const productsWs = XLSX.utils.json_to_sheet(exportData.products);
+            XLSX.utils.book_append_sheet(wb, productsWs, 'Products');
+            
+            // Generate filename with timestamp
+            const date = new Date();
+            const timestamp = date.toISOString().split('T')[0];
+            const filename = `AI_Cybersecurity_Products_Analysis_${timestamp}.xlsx`;
+            
+            // Save file
+            XLSX.writeFile(wb, filename);
+        }
+
+        // Close modal on click outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('productModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

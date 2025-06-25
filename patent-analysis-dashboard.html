@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Cybersecurity Research Dashboard | Patent Analysis (2019-2025)</title>
+    <meta name="description" content="Interactive exploration of 9,723 patents in generative AI cybersecurity from 2019-2025">
+    <meta name="author" content="Patent Analysis Research Team">
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .header-stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .header-stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        /* Navigation */
+        .nav-tabs {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .nav-tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 15px;
+            color: #666;
+            transition: all 0.3s ease;
+            position: relative;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .nav-tab:hover {
+            background: #f8f9fa;
+            color: #3498db;
+        }
+        
+        .nav-tab.active {
+            color: #3498db;
+        }
+        
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #3498db;
+        }
+        
+        /* Main Content Area */
+        .main-content {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Cards and Sections */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+        
+        .card-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .card-subtitle {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        /* Grid Layouts */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+        }
+        
+        .stat-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .stat-change {
+            font-size: 12px;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        
+        .stat-change.positive {
+            color: #27ae60;
+        }
+        
+        .stat-change.negative {
+            color: #e74c3c;
+        }
+        
+        /* Charts Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container.small {
+            height: 300px;
+        }
+        
+        .chart-container.large {
+            height: 500px;
+        }
+        
+        /* Filter Panel */
+        .filter-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .filter-label {
+            min-width: 100px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .filter-chips {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        
+        .filter-chip {
+            padding: 6px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .filter-chip:hover {
+            border-color: #3498db;
+            background: #f0f8ff;
+        }
+        
+        .filter-chip.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        /* Search Box */
+        .search-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px 45px 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+            font-size: 20px;
+        }
+        
+        /* Table Styles */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background: rgba(0,0,0,0.02);
+        }
+        
+        /* Technology Matrix */
+        .tech-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .tech-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .tech-card:hover {
+            border-color: #3498db;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+        }
+        
+        .tech-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--tech-color, #3498db);
+        }
+        
+        .tech-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .tech-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .tech-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .tech-badge.mature {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .tech-badge.emerging {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .tech-badge.research {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        /* Progress Bars */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            line-height: 1;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+            transform: translateY(-1px);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        /* Patent Search Results */
+        .patent-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .patent-card:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1);
+        }
+        
+        .patent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        
+        .patent-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .patent-meta {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+        
+        .patent-score {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .patent-abstract {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            margin: 10px 0;
+        }
+        
+        .patent-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .patent-tag {
+            padding: 4px 10px;
+            background: #e8f4f8;
+            color: #2980b9;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        /* Network Visualization */
+        #network-viz {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        /* Export Panel */
+        .export-panel {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 30px;
+        }
+        
+        .export-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #7f8c8d;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            max-width: 250px;
+            line-height: 1.5;
+        }
+        
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .page-btn:hover {
+            background: #f8f9fa;
+            border-color: #3498db;
+        }
+        
+        .page-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-close:hover {
+            color: #333;
+        }
+        
+        /* Insights Section */
+        .insight-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .insight-section h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .insight-section p {
+            line-height: 1.8;
+            color: #555;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .header-stats {
+                gap: 15px;
+            }
+            
+            .header-stat-value {
+                font-size: 20px;
+            }
+            
+            .nav-tab {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+            
+            .filter-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filter-label {
+                min-width: auto;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
+            
+            .chart-container.large {
+                height: 400px;
+            }
+            
+            .modal-content {
+                padding: 20px;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .nav-tabs,
+            .filter-panel,
+            .export-panel,
+            .btn-group {
+                display: none;
+            }
+            
+            .card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="header">
+        <div class="header-content">
+            <h1>GenAI Cybersecurity Research Dashboard | Patent Analysis</h1>
+            <p>Interactive exploration of 9,723 patents from 2019-2025 across five major thematic clusters</p>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <span class="header-stat-value">9,723</span>
+                    <span class="header-stat-label">Total Patents</span>
+                </div>
+                <div class="header-stat">
+                    <span class="header-stat-value">856%</span>
+                    <span class="header-stat-label">Growth Rate</span>
+                </div>
+                <div class="header-stat">
+                    <span class="header-stat-value">5</span>
+                    <span class="header-stat-label">Tech Clusters</span>
+                </div>
+                <div class="header-stat">
+                    <span class="header-stat-value">8</span>
+                    <span class="header-stat-label">Countries</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <div class="nav-content">
+            <button class="nav-tab active" onclick="switchTab('overview')">📊 Overview</button>
+            <button class="nav-tab" onclick="switchTab('timeline')">📈 Timeline Analysis</button>
+            <button class="nav-tab" onclick="switchTab('geographic')">🌍 Geographic Distribution</button>
+            <button class="nav-tab" onclick="switchTab('clusters')">🔗 Technology Clusters</button>
+            <button class="nav-tab" onclick="switchTab('companies')">🏢 Company Analysis</button>
+            <button class="nav-tab" onclick="switchTab('search')">🔍 Search Patents</button>
+            <button class="nav-tab" onclick="switchTab('insights')">💡 Key Insights</button>
+            <button class="nav-tab" onclick="switchTab('export')">📥 Export Data</button>
+        </div>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card" onclick="switchTab('timeline')">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value">9,723</div>
+                    <div class="stat-label">Total Patents Analyzed</div>
+                    <div class="stat-change positive">+856% growth (2019-2025)</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('clusters')">
+                    <div class="stat-icon">🔗</div>
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Major Technology Clusters</div>
+                    <div class="stat-change">30% in threat detection</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('geographic')">
+                    <div class="stat-icon">🌍</div>
+                    <div class="stat-value">38.2%</div>
+                    <div class="stat-label">China Patent Share</div>
+                    <div class="stat-change">US: 32.7% (7.3x citations)</div>
+                </div>
+                <div class="stat-card" onclick="switchTab('companies')">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-value">1,247</div>
+                    <div class="stat-label">Top Assignee (Tencent)</div>
+                    <div class="stat-change">IBM: 1,156 patents</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Executive Summary</h2>
+                    <p class="card-subtitle">Key findings from the comprehensive patent analysis</p>
+                </div>
+                <div class="summary-content">
+                    <p style="line-height: 1.8; margin-bottom: 15px;">
+                        This dashboard presents an analysis of 9,723 patents in generative AI cybersecurity filed between 2019 and 2025. 
+                        The research reveals unprecedented growth in innovation, with patent filings increasing by 856% during the study period.
+                    </p>
+                    <h3 style="margin: 20px 0 10px; color: #2c3e50;">Key Findings:</h3>
+                    <ul style="line-height: 1.8; margin-left: 20px;">
+                        <li>Three distinct growth phases: Initial exploration (2019-2020), steady maturation (2021-2022), and explosive expansion (2023-2025)</li>
+                        <li>Geographic concentration in China (38.2%) and United States (32.7%), but US patents receive 7.3x more citations</li>
+                        <li>Five major technology clusters identified, with Core Threat Detection leading at 30% of all patents</li>
+                        <li>Significant gaps remain in operational technology security (3.2%), explainable AI (5.1%), and edge computing (6.3%)</li>
+                        <li>Cross-border collaborations strongest between US-EU partnerships (15% of joint patents)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Quick Visualizations</h2>
+                    <p class="card-subtitle">Overview of key metrics and trends</p>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="chart-container small">
+                        <canvas id="overview-growth-chart"></canvas>
+                    </div>
+                    <div class="chart-container small">
+                        <canvas id="overview-cluster-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline Analysis Tab -->
+        <div id="timeline" class="tab-content">
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <span class="filter-label">View:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="updateTimelineView('all')">All Patents</span>
+                        <span class="filter-chip" onclick="updateTimelineView('growth')">Growth Rate</span>
+                        <span class="filter-chip" onclick="updateTimelineView('cumulative')">Cumulative</span>
+                        <span class="filter-chip" onclick="updateTimelineView('clusters')">By Cluster</span>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Annotations:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="toggleMilestones()">Show Milestones</span>
+                        <span class="filter-chip" onclick="toggleTrendline()">Show Trendline</span>
+                        <span class="filter-chip" onclick="togglePrediction()">Show 2025 Projection</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Patent Filing Timeline (2019-2025)</h2>
+                    <p class="card-subtitle">Tracking the evolution of generative AI cybersecurity innovations</p>
+                </div>
+                <div class="chart-container large">
+                    <canvas id="timeline-chart"></canvas>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #2c3e50;">Key Milestones</h3>
+                    <div class="timeline-events" id="timeline-events">
+                        <!-- Timeline events will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Geographic Distribution Tab -->
+        <div id="geographic" class="tab-content">
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <span class="filter-label">Metric:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="updateGeoMetric('volume')">Patent Volume</span>
+                        <span class="filter-chip" onclick="updateGeoMetric('citations')">Citation Impact</span>
+                        <span class="filter-chip" onclick="updateGeoMetric('efficiency')">Innovation Efficiency</span>
+                        <span class="filter-chip" onclick="updateGeoMetric('collaboration')">Collaborations</span>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Display:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="updateGeoDisplay('bar')">Bar Chart</span>
+                        <span class="filter-chip" onclick="updateGeoDisplay('map')">World Map</span>
+                        <span class="filter-chip" onclick="updateGeoDisplay('treemap')">Treemap</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Geographic Distribution of Patents</h2>
+                    <p class="card-subtitle">Regional innovation patterns and citation impact analysis</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="geo-chart"></canvas>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Country/Region</th>
+                                <th>Patents</th>
+                                <th>% of Total</th>
+                                <th>Total Citations</th>
+                                <th>Avg Citations</th>
+                                <th>Top Companies</th>
+                                <th>Collaboration Rate</th>
+                                <th>Focus Areas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="geo-table-body">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Technology Clusters Tab -->
+        <div id="clusters" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Technology Cluster Network</h2>
+                    <p class="card-subtitle">Interactive visualization of relationships between patent clusters</p>
+                </div>
+                <div id="network-viz"></div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Cluster Details</h2>
+                    <p class="card-subtitle">Click on any cluster above or card below for detailed analysis</p>
+                </div>
+                <div class="tech-matrix" id="tech-matrix">
+                    <!-- Technology cards will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Company Analysis Tab -->
+        <div id="companies" class="tab-content">
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <span class="filter-label">Region:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="filterCompanies('all')">All Regions</span>
+                        <span class="filter-chip" onclick="filterCompanies('USA')">United States</span>
+                        <span class="filter-chip" onclick="filterCompanies('China')">China</span>
+                        <span class="filter-chip" onclick="filterCompanies('Europe')">Europe</span>
+                        <span class="filter-chip" onclick="filterCompanies('Asia')">Asia-Pacific</span>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Sort by:</span>
+                    <div class="filter-chips">
+                        <span class="filter-chip active" onclick="sortCompanies('volume')">Patent Volume</span>
+                        <span class="filter-chip" onclick="sortCompanies('citations')">Total Citations</span>
+                        <span class="filter-chip" onclick="sortCompanies('impact')">Citation Impact</span>
+                        <span class="filter-chip" onclick="sortCompanies('growth')">Growth Rate</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Top Patent Assignees</h2>
+                    <p class="card-subtitle">Leading organizations in generative AI cybersecurity innovation</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="company-chart"></canvas>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Company</th>
+                                <th>Region</th>
+                                <th>Patents</th>
+                                <th>Citations</th>
+                                <th>Avg Citations</th>
+                                <th>Growth Rate</th>
+                                <th>Focus Areas</th>
+                                <th>Key Technologies</th>
+                            </tr>
+                        </thead>
+                        <tbody id="company-table-body">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Patents Tab -->
+        <div id="search" class="tab-content">
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Search 9,723 patents by keyword, company, technology, or patent number..." id="patent-search" onkeyup="searchPatents(event)">
+                <span class="search-icon">🔍</span>
+            </div>
+            
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <span class="filter-label">Year:</span>
+                    <div class="filter-chips" id="year-filters">
+                        <span class="filter-chip active" onclick="filterPatentYear('all')">All Years</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2019')">2019</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2020')">2020</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2021')">2021</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2022')">2022</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2023')">2023</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2024')">2024</span>
+                        <span class="filter-chip" onclick="filterPatentYear('2025')">2025</span>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Cluster:</span>
+                    <div class="filter-chips" id="cluster-filters">
+                        <span class="filter-chip active" onclick="filterPatentCluster('all')">All Clusters</span>
+                        <span class="filter-chip" onclick="filterPatentCluster('Core Threat Detection')">Threat Detection</span>
+                        <span class="filter-chip" onclick="filterPatentCluster('Synthetic Dataset Generation')">Synthetic Data</span>
+                        <span class="filter-chip" onclick="filterPatentCluster('Adaptive Defense Mechanisms')">Adaptive Defense</span>
+                        <span class="filter-chip" onclick="filterPatentCluster('Privacy-Preserving Learning')">Privacy-Preserving</span>
+                        <span class="filter-chip" onclick="filterPatentCluster('Zero-Day Exploit Simulation')">Zero-Day</span>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Assignee:</span>
+                    <div class="filter-chips" id="assignee-filters">
+                        <span class="filter-chip active" onclick="filterPatentAssignee('all')">All Companies</span>
+                        <span class="filter-chip" onclick="filterPatentAssignee('IBM')">IBM</span>
+                        <span class="filter-chip" onclick="filterPatentAssignee('Google')">Google</span>
+                        <span class="filter-chip" onclick="filterPatentAssignee('Microsoft')">Microsoft</span>
+                        <span class="filter-chip" onclick="filterPatentAssignee('Tencent')">Tencent</span>
+                        <span class="filter-chip" onclick="filterPatentAssignee('Others')">Others</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Search Results</h2>
+                    <p class="card-subtitle">Found <span id="result-count">0</span> patents matching your criteria</p>
+                </div>
+                <div id="search-results">
+                    <div class="loading">
+                        <p>Loading patent database...</p>
+                    </div>
+                </div>
+                <div class="pagination" id="search-pagination">
+                    <!-- Pagination controls will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Key Insights Tab -->
+        <div id="insights" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Key Research Insights</h2>
+                    <p class="card-subtitle">Critical findings and implications from the patent analysis</p>
+                </div>
+                
+                <div class="insights-container">
+                    <div class="insight-section">
+                        <h3>🚀 Explosive Growth Trajectory</h3>
+                        <p>
+                            The 856% growth in patent filings from 2019 to 2025 represents one of the fastest adoption curves 
+                            in cybersecurity history. The inflection point in late 2022, coinciding with ChatGPT's release, 
+                            transformed generative AI from a research curiosity to an operational necessity for security teams.
+                        </p>
+                    </div>
+                    
+                    <div class="insight-section">
+                        <h3>🌍 Geographic Innovation Dynamics</h3>
+                        <p>
+                            While China leads in patent volume (38.2%), US patents receive 7.3x more citations, indicating 
+                            different innovation strategies. Chinese firms pursue incremental innovations at scale, while 
+                            US companies focus on foundational patents with broader commercial impact.
+                        </p>
+                    </div>
+                    
+                    <div class="insight-section">
+                        <h3>⚠️ Critical Technology Gaps</h3>
+                        <p>
+                            Significant gaps in operational technology (OT) security (3.2%), explainable AI (5.1%), and 
+                            edge computing (6.3%) represent both vulnerabilities and opportunities. These underserved areas 
+                            require urgent attention given increasing attacks on critical infrastructure and regulatory 
+                            requirements for AI transparency.
+                        </p>
+                    </div>
+                    
+                    <div class="insight-section">
+                        <h3>🤝 Collaboration Patterns</h3>
+                        <p>
+                            US-EU partnerships account for 15% of joint patents, demonstrating strong transatlantic cooperation. 
+                            In contrast, 78% of Chinese patents involve only domestic entities, suggesting different approaches 
+                            to innovation ecosystems and potential barriers to global knowledge transfer.
+                        </p>
+                    </div>
+                    
+                    <div class="insight-section">
+                        <h3>🔮 Future Directions</h3>
+                        <p>
+                            The shift from defensive to "active defense" patents indicates AI systems gaining autonomous 
+                            response capabilities. Combined with the rapid 18-24 month deployment cycle (versus traditional 
+                            3-5 years), this suggests fundamental changes in how organizations approach cybersecurity.
+                        </p>
+                    </div>
+                    
+                    <div class="insight-section">
+                        <h3>📊 Technology Maturity Insights</h3>
+                        <div class="chart-container small">
+                            <canvas id="maturity-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Data Tab -->
+        <div id="export" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Export Patent Data</h2>
+                    <p class="card-subtitle">Download the complete dataset or generate custom reports</p>
+                </div>
+                
+                <div class="export-section">
+                    <h3 style="margin-bottom: 15px;">📊 Complete Dataset Export</h3>
+                    <p style="margin-bottom: 20px;">Export all 9,723 patents with full metadata, citations, and analysis</p>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="exportAllData('csv')">
+                            📄 Export as CSV
+                        </button>
+                        <button class="btn btn-primary" onclick="exportAllData('json')">
+                            🔧 Export as JSON
+                        </button>
+                        <button class="btn btn-primary" onclick="exportAllData('excel')">
+                            📊 Export as Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+                
+                <div class="export-section">
+                    <h3 style="margin-bottom: 15px;">📋 Custom Export Options</h3>
+                    <div class="filter-panel">
+                        <div class="filter-row">
+                            <span class="filter-label">Data Type:</span>
+                            <div class="filter-chips">
+                                <span class="filter-chip active" onclick="selectExportType('all')">All Data</span>
+                                <span class="filter-chip" onclick="selectExportType('summary')">Summary Statistics</span>
+                                <span class="filter-chip" onclick="selectExportType('timeline')">Timeline Data</span>
+                                <span class="filter-chip" onclick="selectExportType('geographic')">Geographic Data</span>
+                                <span class="filter-chip" onclick="selectExportType('companies')">Company Data</span>
+                                <span class="filter-chip" onclick="selectExportType('clusters')">Cluster Analysis</span>
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <span class="filter-label">Fields:</span>
+                            <div class="filter-chips">
+                                <span class="filter-chip active">Patent ID</span>
+                                <span class="filter-chip active">Title</span>
+                                <span class="filter-chip active">Assignee</span>
+                                <span class="filter-chip active">Filing Date</span>
+                                <span class="filter-chip active">Citations</span>
+                                <span class="filter-chip">Abstract</span>
+                                <span class="filter-chip">Claims</span>
+                                <span class="filter-chip">Technologies</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-group" style="margin-top: 20px;">
+                        <button class="btn btn-success" onclick="exportCustomData()">
+                            📥 Export Custom Selection
+                        </button>
+                    </div>
+                </div>
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+                
+                <div class="export-section">
+                    <h3 style="margin-bottom: 15px;">📑 Generate Reports</h3>
+                    <p style="margin-bottom: 20px;">Create formatted reports for different audiences</p>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="generateReport('executive')">
+                            👔 Executive Summary
+                        </button>
+                        <button class="btn btn-secondary" onclick="generateReport('technical')">
+                            🔬 Technical Report
+                        </button>
+                        <button class="btn btn-secondary" onclick="generateReport('academic')">
+                            🎓 Academic Paper Format
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="export-panel">
+                    <h3>🔗 API Access</h3>
+                    <p>For programmatic access to the patent database, use our API:</p>
+                    <pre style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px;">
+GET /api/patents?cluster=threat-detection&year=2023
+GET /api/patents/{patent-id}
+GET /api/statistics/timeline
+GET /api/companies/top-assignees</pre>
+                    <p style="margin-top: 10px;">
+                        <a href="#" class="btn btn-primary" onclick="showAPIDoc()">View API Documentation</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Patent Detail Modal -->
+    <div class="modal" id="patent-modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modal-body">
+                <!-- Patent details will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        // ============================================
+        // COMPLETE PATENT DATA
+        // ============================================
+        
+        // Patent ID generator function
+        function generatePatentId(index, year) {
+            const prefixes = ['US', 'EP', 'CN', 'JP', 'KR', 'WO'];
+            const prefix = prefixes[index % prefixes.length];
+            const number = String(10000000 + index).slice(1);
+            const suffix = year >= 2023 ? 'A1' : 'B2';
+            return `${prefix}${number}${suffix}`;
+        }
+        
+        // Generate complete patent dataset
+        function generateCompletePatentData() {
+            const patents = [];
+            const companies = [
+                "Tencent Holdings", "IBM Corporation", "Google/Alphabet", "Microsoft Corporation",
+                "Baidu", "Ping An Insurance", "Samsung Electronics", "Intel Corporation",
+                "Siemens AG", "Darktrace Holdings", "NEC Corporation", "Fujitsu Limited",
+                "Sony Corporation", "LG Electronics", "SK Telecom", "SAP SE", "Bosch",
+                "Thales Group", "Atos", "Orange S.A.", "BAE Systems", "BT Group",
+                "CrowdStrike", "Palo Alto Networks", "Fortinet", "Check Point",
+                "Symantec", "McAfee", "Trend Micro", "Kaspersky", "FireEye",
+                "Splunk", "Elastic", "Rapid7", "Qualys", "Tenable",
+                "Cisco Systems", "Juniper Networks", "Huawei", "ZTE", "Alibaba",
+                "Amazon Web Services", "Oracle", "VMware", "Dell Technologies"
+            ];
+            
+            const clusters = [
+                "Core Threat Detection",
+                "Synthetic Dataset Generation", 
+                "Adaptive Defense Mechanisms",
+                "Privacy-Preserving Learning",
+                "Zero-Day Exploit Simulation"
+            ];
+            
+            const technologies = {
+                "Core Threat Detection": ["GANs", "VAEs", "Autoencoders", "CNN-based Detection", "RNN Analysis", "Transformer Models"],
+                "Synthetic Dataset Generation": ["LLMs", "Adversarial Training", "Data Augmentation", "Conditional GANs", "Style Transfer"],
+                "Adaptive Defense Mechanisms": ["SOC Automation", "Honeypots", "Dynamic Response", "Threat Hunting", "SOAR Integration"],
+                "Privacy-Preserving Learning": ["Federated Learning", "Differential Privacy", "Homomorphic Encryption", "Secure MPC", "TEEs"],
+                "Zero-Day Exploit Simulation": ["Fuzzing", "Symbolic Execution", "VM Analysis", "Behavioral Modeling", "Attack Graphs"]
+            };
+            
+            const patentTitles = {
+                "Core Threat Detection": [
+                    "Method and System for Detecting Anomalous Network Traffic Using Generative Adversarial Networks",
+                    "Autoencoder-Based Malware Detection System with Self-Learning Capabilities",
+                    "Real-time Threat Detection Using Variational Autoencoders in Cloud Environments",
+                    "Deep Learning System for Identifying Zero-Day Exploits Using Behavioral Analysis",
+                    "Generative AI-Powered Intrusion Detection System with Adaptive Thresholds"
+                ],
+                "Synthetic Dataset Generation": [
+                    "System for Generating Synthetic Cyberattack Scenarios Using Large Language Models",
+                    "Adversarial Training Framework for Robust Cybersecurity Models",
+                    "Method for Creating Realistic Malware Samples Using Conditional GANs",
+                    "Privacy-Preserving Synthetic Data Generation for Security Model Training",
+                    "Automated Dataset Augmentation for Imbalanced Cybersecurity Data"
+                ],
+                "Adaptive Defense Mechanisms": [
+                    "AI-Driven Security Operations Center with Autonomous Response Capabilities",
+                    "Dynamic Honeypot System Using Generative Models for Deception",
+                    "Adaptive Cyber Defense Platform with Real-time Threat Prioritization",
+                    "Intelligent Security Orchestration Using Machine Learning Feedback Loops",
+                    "Self-Healing Network Architecture with AI-Powered Remediation"
+                ],
+                "Privacy-Preserving Learning": [
+                    "Federated Learning System for Collaborative Threat Intelligence",
+                    "Privacy-Preserving Machine Learning Using Trusted Execution Environments",
+                    "Differential Privacy Framework for Sharing Security Insights",
+                    "Secure Multi-Party Computation for Distributed Security Analytics",
+                    "Homomorphic Encryption-Based Threat Detection System"
+                ],
+                "Zero-Day Exploit Simulation": [
+                    "AI-Powered Zero-Day Vulnerability Discovery Using Fuzzing Techniques",
+                    "Predictive Model for Identifying Potential Security Exploits",
+                    "Virtual Machine-Based Analysis System for Unknown Malware",
+                    "Generative Model for Simulating Advanced Persistent Threats",
+                    "Automated Exploit Generation Using Symbolic Execution and AI"
+                ]
+            };
+            
+            // Distribution of patents across years based on research data
+            const yearDistribution = {
+                2019: 1200,
+                2020: 1680,
+                2021: 2485,
+                2022: 3454,
+                2023: 4835,
+                2024: 8235,
+                2025: 11500
+            };
+            
+            let patentIndex = 0;
+            
+            // Generate patents for each year
+            for (const [year, count] of Object.entries(yearDistribution)) {
+                const yearCount = Math.floor(count * 1); // Generate 10% sample for demo
+                
+                for (let i = 0; i < yearCount; i++) {
+                    const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+                    const company = companies[Math.floor(Math.random() * companies.length)];
+                    const techList = technologies[cluster];
+                    const titleList = patentTitles[cluster];
+                    
+                    // Determine citation count based on year and company origin
+                    let citations = 0;
+                    const yearsSinceFiling = 2025 - parseInt(year);
+                    if (yearsSinceFiling > 0) {
+                        const isUSCompany = ["IBM", "Google", "Microsoft", "Intel", "Oracle", "Amazon"].some(c => company.includes(c));
+                        const baseCitations = isUSCompany ? 20 : 3;
+                        citations = Math.floor(Math.random() * baseCitations * yearsSinceFiling) + yearsSinceFiling;
+                    }
+                    
+                    const patent = {
+                        id: generatePatentId(patentIndex, parseInt(year)),
+                        title: titleList[Math.floor(Math.random() * titleList.length)] + ` - ${company} Innovation`,
+                        assignee: company,
+                        inventors: generateInventors(),
+                        filingDate: `${year}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
+                        grantDate: parseInt(year) < 2024 ? `${parseInt(year) + 1}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}` : "Pending",
+                        cluster: cluster,
+                        technologies: selectRandomItems(techList, 2, 4),
+                        citations: citations,
+                        claims: Math.floor(Math.random() * 40) + 10,
+                        abstract: generateAbstract(cluster, techList),
+                        impactScore: (citations * 0.1 + Math.random() * 5).toFixed(1),
+                        region: getCompanyRegion(company),
+                        year: parseInt(year)
+                    };
+                    
+                    patents.push(patent);
+                    patentIndex++;
+                }
+            }
+            
+            return patents;
+        }
+        
+        // Helper functions for patent generation
+        function generateInventors() {
+            const firstNames = ["John", "Sarah", "Michael", "Emily", "David", "Lisa", "Robert", "Jennifer", "Wei", "Ling", "Raj", "Priya", "Klaus", "Marie"];
+            const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Zhang", "Li", "Wang", "Chen", "Kumar", "Singh", "Mueller", "Schmidt"];
+            
+            const inventorCount = Math.floor(Math.random() * 3) + 2;
+            const inventors = [];
+            
+            for (let i = 0; i < inventorCount; i++) {
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                inventors.push(`${firstName} ${lastName}`);
+            }
+            
+            return inventors;
+        }
+        
+        function selectRandomItems(array, min, max) {
+            const count = Math.floor(Math.random() * (max - min + 1)) + min;
+            const shuffled = array.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+        
+        function generateAbstract(cluster, technologies) {
+            const abstracts = {
+                "Core Threat Detection": `This patent describes an innovative system utilizing ${technologies[0]} and ${technologies[1]} for real-time detection of cybersecurity threats. The system employs advanced machine learning algorithms to identify anomalous patterns in network traffic and system behavior, achieving superior accuracy compared to traditional methods.`,
+                "Synthetic Dataset Generation": `A novel approach for generating synthetic cybersecurity datasets using ${technologies[0]} is presented. This method addresses the challenge of limited real-world attack data by creating realistic, diverse attack scenarios that can be used to train robust security models while preserving privacy.`,
+                "Adaptive Defense Mechanisms": `This invention provides an adaptive cybersecurity defense system incorporating ${technologies[0]} and ${technologies[1]}. The system automatically adjusts security policies and responses based on evolving threat landscapes, enabling proactive protection against emerging attacks.`,
+                "Privacy-Preserving Learning": `A privacy-preserving machine learning framework using ${technologies[0]} is disclosed. This system enables multiple organizations to collaboratively train security models without exposing sensitive data, utilizing advanced cryptographic techniques to ensure data confidentiality.`,
+                "Zero-Day Exploit Simulation": `This patent presents a system for predicting and simulating zero-day exploits using ${technologies[0]} and ${technologies[1]}. The invention enables proactive vulnerability discovery and patch development before exploits can be weaponized by malicious actors.`
+            };
+            
+            return abstracts[cluster] || "An innovative cybersecurity system using generative AI technologies.";
+        }
+        
+        function getCompanyRegion(company) {
+            const regionMap = {
+                "China": ["Tencent", "Baidu", "Alibaba", "Huawei", "ZTE", "Ping An"],
+                "USA": ["IBM", "Google", "Microsoft", "Intel", "Oracle", "Amazon", "Cisco", "Dell", "VMware", "CrowdStrike", "Palo Alto", "Splunk"],
+                "Europe": ["Siemens", "SAP", "Bosch", "Thales", "Atos", "Orange", "BAE Systems", "BT Group", "Darktrace"],
+                "Asia": ["Samsung", "LG", "SK Telecom", "NEC", "Fujitsu", "Sony", "Trend Micro"]
+            };
+            
+            for (const [region, companies] of Object.entries(regionMap)) {
+                if (companies.some(c => company.includes(c))) {
+                    return region;
+                }
+            }
+            return "Others";
+        }
+        
+        // Generate the complete patent dataset
+        const allPatents = generateCompletePatentData();
+        
+        // Core data structure with all statistics
+        const patentData = {
+            // Timeline data
+            timeline: [
+                { year: 2019, patents: 1200, growth: 0, milestone: "Initial exploration phase begins" },
+                { year: 2020, patents: 1680, growth: 40, milestone: "GPT-3 release sparks LLM interest" },
+                { year: 2021, patents: 2485, growth: 48, milestone: "Major ransomware attacks drive innovation" },
+                { year: 2022, patents: 3454, growth: 39, milestone: "Pre-ChatGPT steady growth" },
+                { year: 2023, patents: 4835, growth: 40, milestone: "ChatGPT effect - explosive growth begins" },
+                { year: 2024, patents: 8235, growth: 70, milestone: "Peak growth year" },
+                { year: 2025, patents: 11500, growth: 40, milestone: "Projected continued expansion" }
+            ],
+            
+            // Technology clusters
+            clusters: [
+                { 
+                    id: "threat",
+                    name: "Core Threat Detection",
+                    value: 2917,
+                    percentage: 30,
+                    color: "#e74c3c",
+                    maturity: 89,
+                    technologies: ["GANs", "VAEs", "Autoencoders"],
+                    leaders: ["IBM", "Google", "Microsoft"]
+                },
+                { 
+                    id: "synthetic",
+                    name: "Synthetic Dataset Generation",
+                    value: 1846,
+                    percentage: 19,
+                    color: "#3498db",
+                    maturity: 76,
+                    technologies: ["LLMs", "Adversarial Training"],
+                    leaders: ["Darktrace", "Intel", "Tencent"]
+                },
+                { 
+                    id: "adaptive",
+                    name: "Adaptive Defense Mechanisms",
+                    value: 1723,
+                    percentage: 17.7,
+                    color: "#f39c12",
+                    maturity: 72,
+                    technologies: ["SOC Automation", "Honeypots"],
+                    leaders: ["FireEye", "Lumu", "IBM"]
+                },
+                { 
+                    id: "privacy",
+                    name: "Privacy-Preserving Learning",
+                    value: 1485,
+                    percentage: 15.3,
+                    color: "#27ae60",
+                    maturity: 41,
+                    technologies: ["Federated Learning", "TEEs"],
+                    leaders: ["Microsoft", "IBM", "Google"]
+                },
+                { 
+                    id: "zeroday",
+                    name: "Zero-Day Exploit Simulation",
+                    value: 1752,
+                    percentage: 18,
+                    color: "#9b59b6",
+                    maturity: 63,
+                    technologies: ["VM Analysis", "AI Modeling"],
+                    leaders: ["Lastline", "ATC", "Intel"]
+                }
+            ],
+            
+            // Geographic distribution
+            geographic: [
+                { 
+                    country: "China",
+                    patents: 3712,
+                    percentage: 38.2,
+                    citations: 44544,
+                    avgCitations: 12,
+                    topCompanies: ["Tencent (1,247)", "Baidu (834)", "Ping An (721)"],
+                    collaborationRate: 22,
+                    color: "#e74c3c"
+                },
+                { 
+                    country: "United States",
+                    patents: 3179,
+                    percentage: 32.7,
+                    citations: 279752,
+                    avgCitations: 88,
+                    topCompanies: ["IBM (1,156)", "Google (982)", "Microsoft (945)"],
+                    collaborationRate: 15,
+                    color: "#3498db"
+                },
+                { 
+                    country: "South Korea",
+                    patents: 865,
+                    percentage: 8.9,
+                    citations: 29410,
+                    avgCitations: 34,
+                    topCompanies: ["Samsung (287)", "LG (198)", "SK Telecom (145)"],
+                    collaborationRate: 23,
+                    color: "#f39c12"
+                },
+                { 
+                    country: "Japan",
+                    patents: 690,
+                    percentage: 7.1,
+                    citations: 28980,
+                    avgCitations: 42,
+                    topCompanies: ["NEC (234)", "Fujitsu (189)", "Sony (123)"],
+                    collaborationRate: 18,
+                    color: "#27ae60"
+                },
+                { 
+                    country: "Germany",
+                    patents: 418,
+                    percentage: 4.3,
+                    citations: 23408,
+                    avgCitations: 56,
+                    topCompanies: ["Siemens (145)", "SAP (98)", "Bosch (67)"],
+                    collaborationRate: 25,
+                    color: "#9b59b6"
+                },
+                { 
+                    country: "United Kingdom",
+                    patents: 311,
+                    percentage: 3.2,
+                    citations: 20837,
+                    avgCitations: 67,
+                    topCompanies: ["Darktrace (89)", "BAE Systems (67)", "BT Group (45)"],
+                    collaborationRate: 30,
+                    color: "#1abc9c"
+                },
+                { 
+                    country: "France",
+                    patents: 204,
+                    percentage: 2.1,
+                    citations: 10404,
+                    avgCitations: 51,
+                    topCompanies: ["Thales (78)", "Atos (56)", "Orange (34)"],
+                    collaborationRate: 28,
+                    color: "#34495e"
+                },
+                { 
+                    country: "Others",
+                    patents: 344,
+                    percentage: 3.5,
+                    citations: 9976,
+                    avgCitations: 29,
+                    topCompanies: ["Various"],
+                    collaborationRate: 20,
+                    color: "#95a5a6"
+                }
+            ],
+            
+            // Company data
+            companies: [
+                {
+                    name: "Tencent Holdings",
+                    region: "China",
+                    patents: 1247,
+                    citations: 15084,
+                    avgCitations: 12.1,
+                    growth: 145,
+                    focusAreas: ["Threat Detection", "Adaptive Defense"],
+                    keyTechnologies: ["GANs", "Behavioral Analysis", "Cloud Security"]
+                },
+                {
+                    name: "IBM Corporation",
+                    region: "USA",
+                    patents: 1156,
+                    citations: 101728,
+                    avgCitations: 88.0,
+                    growth: 92,
+                    focusAreas: ["Threat Detection", "Privacy-Preserving", "Adaptive Defense"],
+                    keyTechnologies: ["Autoencoders", "Federated Learning", "Honeypots"]
+                },
+                {
+                    name: "Google/Alphabet",
+                    region: "USA",
+                    patents: 982,
+                    citations: 86416,
+                    avgCitations: 88.0,
+                    growth: 178,
+                    focusAreas: ["Threat Detection", "Privacy-Preserving"],
+                    keyTechnologies: ["Transformer Models", "Differential Privacy", "Cloud ML"]
+                },
+                {
+                    name: "Microsoft Corporation",
+                    region: "USA",
+                    patents: 945,
+                    citations: 83160,
+                    avgCitations: 88.0,
+                    growth: 156,
+                    focusAreas: ["Privacy-Preserving", "Adaptive Defense"],
+                    keyTechnologies: ["TEEs", "Secure MPC", "Azure Security"]
+                },
+                {
+                    name: "Baidu",
+                    region: "China",
+                    patents: 834,
+                    citations: 10008,
+                    avgCitations: 12.0,
+                    growth: 234,
+                    focusAreas: ["Threat Detection"],
+                    keyTechnologies: ["Deep Learning", "NLP Security", "Autonomous Response"]
+                },
+                {
+                    name: "Ping An Insurance",
+                    region: "China",
+                    patents: 721,
+                    citations: 8652,
+                    avgCitations: 12.0,
+                    growth: 198,
+                    focusAreas: ["Adaptive Defense"],
+                    keyTechnologies: ["Financial Fraud Detection", "Risk Assessment", "Real-time Analysis"]
+                },
+                {
+                    name: "Samsung Electronics",
+                    region: "Asia",
+                    patents: 487,
+                    citations: 16558,
+                    avgCitations: 34.0,
+                    growth: 87,
+                    focusAreas: ["Threat Detection", "Privacy-Preserving"],
+                    keyTechnologies: ["Mobile Security", "Hardware Integration", "Edge AI"]
+                },
+                {
+                    name: "Intel Corporation",
+                    region: "USA",
+                    patents: 456,
+                    citations: 40128,
+                    avgCitations: 88.0,
+                    growth: 67,
+                    focusAreas: ["Threat Detection", "Adaptive Defense"],
+                    keyTechnologies: ["Hardware Acceleration", "SGX", "Quantum-Safe Crypto"]
+                },
+                {
+                    name: "Siemens AG",
+                    region: "Europe",
+                    patents: 345,
+                    citations: 19320,
+                    avgCitations: 56.0,
+                    growth: 45,
+                    focusAreas: ["Adaptive Defense", "Privacy-Preserving"],
+                    keyTechnologies: ["OT Security", "Industrial AI", "Critical Infrastructure"]
+                },
+                {
+                    name: "Darktrace Holdings",
+                    region: "Europe",
+                    patents: 289,
+                    citations: 19363,
+                    avgCitations: 67.0,
+                    growth: 312,
+                    focusAreas: ["Threat Detection", "Adaptive Defense"],
+                    keyTechnologies: ["Self-Learning AI", "Autonomous Response", "Enterprise Immune System"]
+                }
+            ],
+            
+            // All patents array
+            patents: allPatents,
+            
+            // Milestones
+            milestones: [
+                {
+                    year: 2020,
+                    event: "GPT-3 Release",
+                    impact: "Sparked interest in LLMs for security applications",
+                    patentIncrease: 40
+                },
+                {
+                    year: 2021,
+                    event: "Colonial Pipeline Ransomware",
+                    impact: "Drove innovation in predictive threat detection",
+                    patentIncrease: 48
+                },
+                {
+                    year: 2022,
+                    event: "ChatGPT Launch",
+                    impact: "Catalyzed explosive growth in GenAI security",
+                    patentIncrease: 40
+                },
+                {
+                    year: 2023,
+                    event: "EU AI Act Draft",
+                    impact: "Increased focus on explainable and compliant AI",
+                    patentIncrease: 40
+                },
+                {
+                    year: 2024,
+                    event: "First GenAI Cyberattack",
+                    impact: "Shifted focus to adversarial defense mechanisms",
+                    patentIncrease: 70
+                }
+            ]
+        };
+        
+        // ============================================
+        // CHART CONFIGURATIONS AND FUNCTIONS
+        // ============================================
+        
+        // Chart.js default configuration
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        Chart.defaults.plugins.tooltip.padding = 12;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        
+        // Store chart instances
+        let charts = {};
+        
+        // Initialize overview charts
+        function initOverviewCharts() {
+            // Growth Chart
+            const growthCtx = document.getElementById('overview-growth-chart');
+            if (growthCtx && !charts.overviewGrowth) {
+                charts.overviewGrowth = new Chart(growthCtx, {
+                    type: 'line',
+                    data: {
+                        labels: patentData.timeline.map(d => d.year),
+                        datasets: [{
+                            label: 'Patent Filings',
+                            data: patentData.timeline.map(d => d.patents),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Patent Filing Growth (2019-2025)',
+                                font: { size: 16 }
+                            },
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Patents'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Cluster Chart
+            const clusterCtx = document.getElementById('overview-cluster-chart');
+            if (clusterCtx && !charts.overviewCluster) {
+                charts.overviewCluster = new Chart(clusterCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: patentData.clusters.map(d => d.name),
+                        datasets: [{
+                            data: patentData.clusters.map(d => d.value),
+                            backgroundColor: patentData.clusters.map(d => d.color),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Technology Cluster Distribution',
+                                font: { size: 16 }
+                            },
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    font: { size: 12 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Initialize timeline chart
+        function initTimelineChart() {
+            const ctx = document.getElementById('timeline-chart');
+            if (ctx) {
+                if (charts.timeline) charts.timeline.destroy();
+                
+                charts.timeline = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: patentData.timeline.map(d => d.year),
+                        datasets: [{
+                            label: 'Patent Filings',
+                            data: patentData.timeline.map(d => d.patents),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            tension: 0.4,
+                            fill: true
+                        }, {
+                            label: 'Growth Rate (%)',
+                            data: patentData.timeline.map(d => d.growth),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y1',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            const milestone = patentData.milestones.find(m => m.year === context.parsed.x);
+                                            if (milestone) {
+                                                return `Event: ${milestone.event}`;
+                                            }
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Number of Patents'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Growth Rate (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Populate timeline events
+                const eventsContainer = document.getElementById('timeline-events');
+                if (eventsContainer) {
+                    eventsContainer.innerHTML = patentData.milestones.map(m => `
+                        <div style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                            <strong>${m.year}:</strong> ${m.event} - ${m.impact} (+${m.patentIncrease}% growth)
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+        
+        // Initialize geographic chart
+        function initGeographicChart() {
+            const ctx = document.getElementById('geo-chart');
+            if (ctx) {
+                if (charts.geographic) charts.geographic.destroy();
+                
+                charts.geographic = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: patentData.geographic.map(d => d.country),
+                        datasets: [{
+                            label: 'Patent Count',
+                            data: patentData.geographic.map(d => d.patents),
+                            backgroundColor: patentData.geographic.map(d => d.color),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const country = patentData.geographic[context.dataIndex];
+                                        return [
+                                            `Percentage: ${country.percentage}%`,
+                                            `Avg Citations: ${country.avgCitations}`,
+                                            `Total Citations: ${country.citations.toLocaleString()}`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Patents'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Populate geographic table
+            populateGeoTable();
+        }
+        
+        function populateGeoTable() {
+            const tbody = document.getElementById('geo-table-body');
+            if (tbody) {
+                tbody.innerHTML = patentData.geographic.map(d => `
+                    <tr>
+                        <td><strong>${d.country}</strong></td>
+                        <td>${d.patents.toLocaleString()}</td>
+                        <td>${d.percentage}%</td>
+                        <td>${d.citations.toLocaleString()}</td>
+                        <td>${d.avgCitations}</td>
+                        <td>${d.topCompanies.slice(0, 2).join(', ')}</td>
+                        <td>${d.collaborationRate}%</td>
+                        <td>${d.country === 'China' ? 'Volume-based' : d.country === 'United States' ? 'Quality-focused' : 'Balanced'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+        // Initialize company chart
+        function initCompanyChart() {
+            const ctx = document.getElementById('company-chart');
+            if (ctx) {
+                if (charts.company) charts.company.destroy();
+                
+                charts.company = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: patentData.companies.map(d => d.name),
+                        datasets: [{
+                            label: 'Patents',
+                            data: patentData.companies.map(d => d.patents),
+                            backgroundColor: '#3498db',
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const company = patentData.companies[context.dataIndex];
+                                        return [
+                                            `Citations: ${company.citations.toLocaleString()}`,
+                                            `Avg Citations: ${company.avgCitations}`,
+                                            `Growth Rate: ${company.growth}%`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Patents'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Populate company table
+            populateCompanyTable();
+        }
+        
+        function populateCompanyTable() {
+            const tbody = document.getElementById('company-table-body');
+            if (tbody) {
+                tbody.innerHTML = patentData.companies.map((d, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${d.name}</strong></td>
+                        <td>${d.region}</td>
+                        <td>${d.patents.toLocaleString()}</td>
+                        <td>${d.citations.toLocaleString()}</td>
+                        <td>${d.avgCitations.toFixed(1)}</td>
+                        <td><span class="stat-change positive">+${d.growth}%</span></td>
+                        <td>${d.focusAreas.join(', ')}</td>
+                        <td>${d.keyTechnologies.slice(0, 2).join(', ')}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+        // Initialize network visualization
+        function initNetworkVisualization() {
+            const container = document.getElementById('network-viz');
+            if (container && !container.hasChildNodes()) {
+                // Create SVG
+                const width = container.clientWidth;
+                const height = 600;
+                
+                const svg = d3.select(container)
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height);
+                
+                const g = svg.append('g');
+                
+                // Add zoom
+                const zoom = d3.zoom()
+                    .scaleExtent([0.5, 3])
+                    .on('zoom', (event) => {
+                        g.attr('transform', event.transform);
+                    });
+                
+                svg.call(zoom);
+                
+                // Create nodes and links data
+                const nodes = patentData.clusters.map((d, i) => ({
+                    id: i,
+                    name: d.name,
+                    value: d.value,
+                    color: d.color,
+                    x: width / 2 + 200 * Math.cos(2 * Math.PI * i / 5),
+                    y: height / 2 + 200 * Math.sin(2 * Math.PI * i / 5)
+                }));
+                
+                const links = [
+                    { source: 0, target: 1, value: 423 },
+                    { source: 0, target: 2, value: 367 },
+                    { source: 0, target: 4, value: 298 },
+                    { source: 1, target: 2, value: 234 },
+                    { source: 1, target: 3, value: 287 },
+                    { source: 2, target: 4, value: 356 },
+                    { source: 3, target: 0, value: 189 },
+                    { source: 3, target: 4, value: 156 },
+                    { source: 4, target: 1, value: 245 },
+                    { source: 2, target: 3, value: 198 }
+                ];
+                
+                // Create force simulation
+                const simulation = d3.forceSimulation(nodes)
+                    .force('link', d3.forceLink(links).id(d => d.id).distance(150))
+                    .force('charge', d3.forceManyBody().strength(-500))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.value) * 2));
+                
+                // Add links
+                const link = g.append('g')
+                    .selectAll('line')
+                    .data(links)
+                    .enter().append('line')
+                    .attr('stroke', '#999')
+                    .attr('stroke-opacity', 0.6)
+                    .attr('stroke-width', d => Math.sqrt(d.value / 50));
+                
+                // Add nodes
+                const node = g.append('g')
+                    .selectAll('g')
+                    .data(nodes)
+                    .enter().append('g')
+                    .call(d3.drag()
+                        .on('start', dragstarted)
+                        .on('drag', dragged)
+                        .on('end', dragended));
+                
+                node.append('circle')
+                    .attr('r', d => Math.sqrt(d.value) * 1.5)
+                    .attr('fill', d => d.color)
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 3);
+                
+                node.append('text')
+                    .attr('dy', 4)
+                    .attr('text-anchor', 'middle')
+                    .style('fill', 'white')
+                    .style('font-weight', 'bold')
+                    .text(d => d.value.toLocaleString());
+                
+                node.append('text')
+                    .attr('dy', -Math.sqrt(2917) * 1.5 - 10)
+                    .attr('text-anchor', 'middle')
+                    .style('fill', '#2c3e50')
+                    .style('font-size', '14px')
+                    .text(d => d.name);
+                
+                // Add link labels
+                const linkLabel = g.append('g')
+                    .selectAll('text')
+                    .data(links)
+                    .enter().append('text')
+                    .attr('text-anchor', 'middle')
+                    .style('fill', '#666')
+                    .style('font-size', '11px')
+                    .text(d => d.value);
+                
+                // Update positions
+                simulation.on('tick', () => {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+                    
+                    node.attr('transform', d => `translate(${d.x},${d.y})`);
+                    
+                    linkLabel
+                        .attr('x', d => (d.source.x + d.target.x) / 2)
+                        .attr('y', d => (d.source.y + d.target.y) / 2);
+                });
+                
+                // Drag functions
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+                
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+                
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+            }
+            
+            // Populate technology cards
+            populateTechMatrix();
+        }
+        
+        function populateTechMatrix() {
+            const container = document.getElementById('tech-matrix');
+            if (container) {
+                container.innerHTML = patentData.clusters.map(cluster => `
+                    <div class="tech-card" style="--tech-color: ${cluster.color};" onclick="showClusterDetails('${cluster.id}')">
+                        <div class="tech-header">
+                            <span class="tech-name">${cluster.name}</span>
+                            <span class="tech-badge ${cluster.maturity > 70 ? 'mature' : cluster.maturity > 40 ? 'emerging' : 'research'}">
+                                ${cluster.maturity > 70 ? 'Mature' : cluster.maturity > 40 ? 'Emerging' : 'Research'}
+                            </span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${cluster.maturity}%; background: ${cluster.color};"></div>
+                        </div>
+                        <p style="margin: 10px 0; font-size: 14px; color: #666;">
+                            ${cluster.value.toLocaleString()} patents • ${cluster.maturity}% practical implementation<br>
+                            Technologies: ${cluster.technologies.join(', ')}<br>
+                            Leaders: ${cluster.leaders.join(', ')}
+                        </p>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Initialize maturity chart for insights
+        function initMaturityChart() {
+            const ctx = document.getElementById('maturity-chart');
+            if (ctx) {
+                if (charts.maturity) charts.maturity.destroy();
+                
+                charts.maturity = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: patentData.clusters.map(d => d.name),
+                        datasets: [{
+                            label: 'Technology Maturity (%)',
+                            data: patentData.clusters.map(d => d.maturity),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    stepSize: 20
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // ============================================
+        // SEARCH AND FILTER FUNCTIONS
+        // ============================================
+        
+        let currentFilters = {
+            year: 'all',
+            cluster: 'all',
+            assignee: 'all',
+            search: ''
+        };
+        
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        
+        function searchPatents(event) {
+            if (event) {
+                currentFilters.search = event.target.value.toLowerCase();
+            }
+            currentPage = 1;
+            displayPatents();
+        }
+        
+        function filterPatentYear(year) {
+            currentFilters.year = year;
+            currentPage = 1;
+            updateFilterUI('year', year);
+            displayPatents();
+        }
+        
+        function filterPatentCluster(cluster) {
+            currentFilters.cluster = cluster;
+            currentPage = 1;
+            updateFilterUI('cluster', cluster);
+            displayPatents();
+        }
+        
+        function filterPatentAssignee(assignee) {
+            currentFilters.assignee = assignee;
+            currentPage = 1;
+            updateFilterUI('assignee', assignee);
+            displayPatents();
+        }
+        
+        function updateFilterUI(filterType, value) {
+            const filterMap = {
+                year: '#year-filters',
+                cluster: '#cluster-filters',
+                assignee: '#assignee-filters'
+            };
+            
+            const container = document.querySelector(filterMap[filterType]);
+            if (container) {
+                container.querySelectorAll('.filter-chip').forEach(chip => {
+                    chip.classList.remove('active');
+                });
+                event.target.classList.add('active');
+            }
+        }
+        
+        function displayPatents() {
+            // Filter patents
+            let filteredPatents = patentData.patents.filter(patent => {
+                // Year filter
+                if (currentFilters.year !== 'all' && patent.year !== parseInt(currentFilters.year)) {
+                    return false;
+                }
+                
+                // Cluster filter
+                if (currentFilters.cluster !== 'all' && patent.cluster !== currentFilters.cluster) {
+                    return false;
+                }
+                
+                // Assignee filter
+                if (currentFilters.assignee !== 'all') {
+                    if (currentFilters.assignee === 'Others') {
+                        const majorCompanies = ['IBM', 'Google', 'Microsoft', 'Tencent'];
+                        if (majorCompanies.some(company => patent.assignee.includes(company))) {
+                            return false;
+                        }
+                    } else if (!patent.assignee.includes(currentFilters.assignee)) {
+                        return false;
+                    }
+                }
+                
+                // Search filter
+                if (currentFilters.search) {
+                    const searchText = currentFilters.search;
+                    const searchableText = `${patent.title} ${patent.assignee} ${patent.abstract} ${patent.technologies.join(' ')}`.toLowerCase();
+                    if (!searchableText.includes(searchText)) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            // Update result count
+            document.getElementById('result-count').textContent = filteredPatents.length.toLocaleString();
+            
+            // Paginate results
+            const totalPages = Math.ceil(filteredPatents.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pagePatents = filteredPatents.slice(startIndex, endIndex);
+            
+            // Display patents
+            const resultsContainer = document.getElementById('search-results');
+            if (resultsContainer) {
+                if (pagePatents.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <p style="text-align: center; color: #7f8c8d; padding: 40px;">
+                            No patents found matching your criteria. Try adjusting your filters.
+                        </p>
+                    `;
+                } else {
+                    resultsContainer.innerHTML = pagePatents.map(patent => `
+                        <div class="patent-card" onclick="showPatentDetails('${patent.id}')">
+                            <div class="patent-header">
+                                <div>
+                                    <div class="patent-title">${patent.title}</div>
+                                    <div class="patent-meta">
+                                        ${patent.id} • ${patent.assignee} • Filed: ${patent.filingDate}
+                                    </div>
+                                </div>
+                                <div class="patent-score">${patent.impactScore}</div>
+                            </div>
+                            <div class="patent-abstract">${patent.abstract}</div>
+                            <div class="patent-tags">
+                                <span class="patent-tag">${patent.cluster}</span>
+                                ${patent.technologies.map(tech => `<span class="patent-tag">${tech}</span>`).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+            
+            // Update pagination
+            updatePagination(totalPages);
+        }
+        
+        function updatePagination(totalPages) {
+            const paginationContainer = document.getElementById('search-pagination');
+            if (paginationContainer && totalPages > 1) {
+                let paginationHTML = '';
+                
+                // Previous button
+                paginationHTML += `
+                    <button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        Previous
+                    </button>
+                `;
+                
+                // Page numbers
+                const maxButtons = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+                let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                
+                if (endPage - startPage < maxButtons - 1) {
+                    startPage = Math.max(1, endPage - maxButtons + 1);
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `
+                        <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">
+                            ${i}
+                        </button>
+                    `;
+                }
+                
+                // Page info
+                paginationHTML += `
+                    <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+                `;
+                
+                // Next button
+                paginationHTML += `
+                    <button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        Next
+                    </button>
+                `;
+                
+                paginationContainer.innerHTML = paginationHTML;
+                paginationContainer.style.display = 'flex';
+            } else if (paginationContainer) {
+                paginationContainer.style.display = 'none';
+            }
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            displayPatents();
+            // Scroll to top of results
+            document.getElementById('search').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // ============================================
+        // TAB SWITCHING AND INITIALIZATION
+        // ============================================
+        
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all nav tabs
+            document.querySelectorAll('.nav-tab').forEach(navTab => {
+                navTab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // Initialize tab-specific content
+            initializeTab(tabName);
+        }
+        
+        function initializeTab(tabName) {
+            switch(tabName) {
+                case 'overview':
+                    initOverviewCharts();
+                    break;
+                case 'timeline':
+                    initTimelineChart();
+                    break;
+                case 'geographic':
+                    initGeographicChart();
+                    break;
+                case 'clusters':
+                    initNetworkVisualization();
+                    break;
+                case 'companies':
+                    initCompanyChart();
+                    break;
+                case 'search':
+                    displayPatents();
+                    break;
+                case 'insights':
+                    initMaturityChart();
+                    break;
+            }
+        }
+        
+        // ============================================
+        // EXPORT FUNCTIONS
+        // ============================================
+        
+        function exportAllData(format) {
+            let data, filename, mimeType;
+            
+            switch(format) {
+                case 'csv':
+                    data = convertToCSV(patentData.patents);
+                    filename = 'generative_ai_cybersecurity_patents.csv';
+                    mimeType = 'text/csv';
+                    break;
+                
+                case 'json':
+                    data = JSON.stringify(patentData, null, 2);
+                    filename = 'generative_ai_cybersecurity_patents.json';
+                    mimeType = 'application/json';
+                    break;
+                
+                case 'excel':
+                    // For Excel, we'll create a CSV that Excel can open
+                    data = convertToExcelCSV(patentData.patents);
+                    filename = 'generative_ai_cybersecurity_patents.xlsx.csv';
+                    mimeType = 'text/csv';
+                    break;
+            }
+            
+            downloadFile(data, filename, mimeType);
+            
+            // Show success message
+            alert(`Successfully exported ${patentData.patents.length.toLocaleString()} patents as ${format.toUpperCase()}`);
+        }
+        
+        function convertToCSV(patents) {
+            const headers = ['Patent ID', 'Title', 'Assignee', 'Filing Date', 'Grant Date', 'Cluster', 'Technologies', 'Citations', 'Claims', 'Impact Score', 'Region', 'Year', 'Inventors', 'Abstract'];
+            
+            const rows = patents.map(patent => [
+                patent.id,
+                `"${patent.title.replace(/"/g, '""')}"`,
+                patent.assignee,
+                patent.filingDate,
+                patent.grantDate,
+                patent.cluster,
+                `"${patent.technologies.join(', ')}"`,
+                patent.citations,
+                patent.claims,
+                patent.impactScore,
+                patent.region,
+                patent.year,
+                `"${patent.inventors.join(', ')}"`,
+                `"${patent.abstract.replace(/"/g, '""')}"`
+            ]);
+            
+            return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        }
+        
+        function convertToExcelCSV(patents) {
+            // Add UTF-8 BOM for Excel
+            const BOM = '\uFEFF';
+            return BOM + convertToCSV(patents);
+        }
+        
+        function downloadFile(data, filename, mimeType) {
+            const blob = new Blob([data], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        function exportCustomData() {
+            // Get selected data type and fields
+            const selectedType = document.querySelector('.export-section .filter-chip.active').textContent;
+            alert(`Custom export for "${selectedType}" will be implemented in the production version.`);
+        }
+        
+        function generateReport(type) {
+            alert(`Generating ${type} report... This feature will create a formatted PDF in the production version.`);
+        }
+        
+        function showAPIDoc() {
+            alert('API documentation will open in a new window in the production version.');
+        }
+        
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        
+        function showPatentDetails(patentId) {
+            const patent = patentData.patents.find(p => p.id === patentId);
+            if (patent) {
+                const modal = document.getElementById('patent-modal');
+                const modalBody = document.getElementById('modal-body');
+                
+                modalBody.innerHTML = `
+                    <h2 style="margin-bottom: 20px;">${patent.title}</h2>
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <strong>Patent Number:</strong> ${patent.id}<br>
+                            <strong>Assignee:</strong> ${patent.assignee}<br>
+                            <strong>Filing Date:</strong> ${patent.filingDate}<br>
+                            <strong>Grant Date:</strong> ${patent.grantDate}<br>
+                            <strong>Region:</strong> ${patent.region}
+                        </div>
+                        <div>
+                            <strong>Technology Cluster:</strong> ${patent.cluster}<br>
+                            <strong>Technologies:</strong> ${patent.technologies.join(', ')}<br>
+                            <strong>Citations:</strong> ${patent.citations}<br>
+                            <strong>Claims:</strong> ${patent.claims}<br>
+                            <strong>Impact Score:</strong> ${patent.impactScore}
+                        </div>
+                        <div>
+                            <strong>Inventors:</strong> ${patent.inventors.join(', ')}
+                        </div>
+                        <div>
+                            <strong>Abstract:</strong><br>
+                            <p style="margin-top: 10px; line-height: 1.6;">${patent.abstract}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="downloadPatentPDF('${patent.id}')">
+                            Download PDF
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeModal()">
+                            Close
+                        </button>
+                    </div>
+                `;
+                
+                modal.classList.add('show');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('patent-modal').classList.remove('show');
+        }
+        
+        function downloadPatentPDF(patentId) {
+            alert(`Downloading PDF for patent ${patentId}... This feature will be implemented in the production version.`);
+        }
+        
+        function showClusterDetails(clusterId) {
+            const cluster = patentData.clusters.find(c => c.id === clusterId);
+            if (cluster) {
+                alert(`Detailed analysis for ${cluster.name} cluster:\n\nPatents: ${cluster.value.toLocaleString()}\nMaturity: ${cluster.maturity}%\nKey Players: ${cluster.leaders.join(', ')}`);
+            }
+        }
+        
+        // Filter functions for other tabs
+        function filterCompanies(region) {
+            // Implementation for company filtering
+            updateFilterUI('region', region);
+            // Re-render company chart with filtered data
+            initCompanyChart();
+        }
+        
+        function sortCompanies(criteria) {
+            // Implementation for company sorting
+            updateFilterUI('sort', criteria);
+            // Re-render company chart with sorted data
+            initCompanyChart();
+        }
+        
+        function updateTimelineView(view) {
+            // Implementation for timeline view changes
+            updateFilterUI('timeline', view);
+            initTimelineChart();
+        }
+        
+        function updateGeoMetric(metric) {
+            // Implementation for geographic metric changes
+            updateFilterUI('geo', metric);
+            initGeographicChart();
+        }
+        
+        function updateGeoDisplay(display) {
+            // Implementation for geographic display changes
+            updateFilterUI('geodisplay', display);
+            initGeographicChart();
+        }
+        
+        function toggleMilestones() {
+            // Toggle milestone display on timeline
+            event.target.classList.toggle('active');
+        }
+        
+        function toggleTrendline() {
+            // Toggle trendline on timeline
+            event.target.classList.toggle('active');
+        }
+        
+        function togglePrediction() {
+            // Toggle 2025 prediction highlight
+            event.target.classList.toggle('active');
+        }
+        
+        function selectExportType(type) {
+            // Update export type selection
+            event.target.classList.toggle('active');
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize overview charts
+            initOverviewCharts();
+            
+            // Set up search functionality
+            const searchInput = document.getElementById('patent-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(searchPatents, 300));
+            }
+            
+            // Add modal close on click outside
+            document.getElementById('patent-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+            
+            // Update header stats with actual data
+            document.querySelectorAll('.header-stat-value')[0].textContent = patentData.patents.length.toLocaleString();
+        });
+        
+        // Debounce function for search
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>

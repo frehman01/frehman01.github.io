@@ -1,0 +1,3172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Cybersecurity Research Dashboard | Case Study Analysis Platform</title>
+    <meta name="description" content="Comprehensive analysis of 25 real-world GenAI cybersecurity implementations with interactive network explorer and risk-benefit analyzer">
+    
+    <!-- External Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <style>
+        /* CSS Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            /* Light theme with high contrast for readability */
+            --primary-color: #2563eb;
+            --secondary-color: #7c3aed;
+            --accent-color: #0891b2;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --danger: #dc2626;
+            
+            /* Backgrounds */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --card-bg: #ffffff;
+            
+            /* Text colors with high contrast */
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            
+            /* Borders */
+            --border-color: #e2e8f0;
+            --border-hover: #cbd5e1;
+            
+            /* Shadows for depth */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        /* Navigation */
+        .nav-container {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav-brand {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+        
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            font-weight: 500;
+            padding: 5px 0;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        /* Section Styles */
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Executive Summary Styles */
+        .executive-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .main-title {
+            font-size: clamp(36px, 5vw, 56px);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+        
+        /* Research Process Card */
+        .research-process {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .process-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .process-step {
+            background: var(--bg-secondary);
+            padding: 20px 30px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .process-step:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-color);
+        }
+        
+        .process-number {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .process-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .process-arrow {
+            color: var(--text-muted);
+            font-size: 24px;
+        }
+        
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 50px;
+        }
+        
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 35px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-color);
+        }
+        
+        .metric-value {
+            font-size: 52px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            font-size: 18px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .metric-detail {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        /* Timeline */
+        .timeline-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow-x: auto;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .timeline-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+        
+        .timeline-wrapper {
+            position: relative;
+            min-height: 300px;
+            padding: 20px 0;
+        }
+        
+        /* Chart Container */
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+        
+        /* Case Studies Section */
+        .filters-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .filter-select, .search-input {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-select:focus, .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .search-container {
+            grid-column: 1 / -1;
+        }
+        
+        .search-input {
+            width: 100%;
+        }
+        
+        /* Case Cards Grid */
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .case-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .case-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-color);
+        }
+        
+        .case-card.selected {
+            border-color: var(--success);
+            background: rgba(22, 163, 74, 0.05);
+        }
+        
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        
+        .case-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+            flex: 1;
+        }
+        
+        .case-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .case-org {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .case-meta {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-tag {
+            font-size: 12px;
+            padding: 5px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .case-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .case-metric {
+            text-align: center;
+        }
+        
+        .case-metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .case-metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        /* Comparison Panel */
+        .comparison-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            display: none;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .comparison-panel.active {
+            display: block;
+        }
+        
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .comparison-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .comparison-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .comparison-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .comparison-item:last-child {
+            border-bottom: none;
+        }
+        
+        .comparison-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        .comparison-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        
+        /* Risk Assessment Styles */
+        .risk-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .scenario-selector {
+            margin-bottom: 30px;
+        }
+        
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .scenario-card {
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            background: var(--bg-secondary);
+        }
+        
+        .scenario-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .scenario-card.active {
+            background: var(--bg-primary);
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .scenario-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .scenario-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .risk-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .risk-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .risk-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+        }
+        
+        .panel-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .risk-title {
+            color: var(--danger);
+        }
+        
+        .benefit-title {
+            color: var(--success);
+        }
+        
+        .factor-group {
+            margin-bottom: 30px;
+        }
+        
+        .factor-label {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .factor-description {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            background: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            background: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .slider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .risk-slider::-webkit-slider-thumb {
+            background: var(--danger);
+        }
+        
+        .risk-slider::-moz-range-thumb {
+            background: var(--danger);
+        }
+        
+        .benefit-slider::-webkit-slider-thumb {
+            background: var(--success);
+        }
+        
+        .benefit-slider::-moz-range-thumb {
+            background: var(--success);
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .risk-value {
+            color: var(--danger);
+        }
+        
+        .benefit-value {
+            color: var(--success);
+        }
+        
+        /* Results Section */
+        .results-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        @media (max-width: 968px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .score-display {
+            text-align: center;
+        }
+        
+        .overall-score {
+            font-size: 84px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .score-label {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+        
+        .recommendation {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            text-align: left;
+        }
+        
+        .recommendation.high-risk {
+            background: #ffebee;
+            border-color: #ffcdd2;
+        }
+        
+        .recommendation.balanced {
+            background: #fff8e1;
+            border-color: #ffe0b2;
+        }
+        
+        .recommendation.favorable {
+            background: #e8f5e9;
+            border-color: #c8e6c9;
+        }
+        
+        .recommendation-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        
+        .recommendation-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .insights-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 30px;
+        }
+        
+        .insights-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        
+        .insight-card {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--primary-color);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        
+        .insight-card.risk {
+            border-left-color: var(--danger);
+        }
+        
+        .insight-card.benefit {
+            border-left-color: var(--success);
+        }
+        
+        .insight-card.neutral {
+            border-left-color: var(--text-muted);
+        }
+        
+        .insight-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .insight-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+        
+        .action-btn {
+            padding: 12px 30px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .action-btn:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .export-btn {
+            background: var(--success);
+        }
+        
+        .export-btn:hover {
+            background: #059669;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .close-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: var(--bg-tertiary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
+        
+        .close-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1500;
+            max-width: 300px;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .cases-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .process-flow {
+                flex-direction: column;
+            }
+            
+            .process-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .network-info-panel,
+            .network-legend {
+                display: none;
+            }
+        }
+        
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .nav-container,
+            .action-buttons,
+            .filters-container {
+                display: none;
+            }
+            
+            .case-card,
+            .metric-card {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loader"></div>
+        <div class="loading-text">Loading GenAI Cybersecurity Research Dashboard...</div>
+    </div>
+    
+    <!-- Navigation -->
+    <div class="nav-container">
+        <nav>
+            <div class="nav-brand">GenAI Cybersecurity Research Dashboard | Case Study Analysis</div>
+            <ul class="nav-links">
+                <li><a class="nav-link active" data-section="executive">Executive Summary</a></li>
+                <li><a class="nav-link" data-section="cases">Case Studies</a></li>
+                <li><a class="nav-link" data-section="risk">Risk Assessment</a></li>
+            </ul>
+        </nav>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Executive Summary Section -->
+        <section class="section active" id="executive">
+            <div class="executive-header animate-in">
+                <h1 class="main-title">Case Study Analysis (2020-2025)</h1>
+                <p class="subtitle">
+                    A comprehensive analysis of real-world implementations revealing how Generative AI 
+                    is transforming cybersecurity operations, achieving unprecedented improvements, 
+                    and marking the historic moment when AI capabilities surpassed human expertise.
+                </p>
+            </div>
+            
+            <!-- Research Process -->
+            <div class="research-process animate-in">
+                <h2 style="font-size: 24px; margin-bottom: 20px;">Systematic Literature Review Process</h2>
+                <div class="process-flow">
+                    <div class="process-step">
+                        <div class="process-number">487</div>
+                        <div class="process-label">Initial Results</div>
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-step">
+                        <div class="process-number">162</div>
+                        <div class="process-label">Screening Criteria</div>
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-step">
+                        <div class="process-number">25</div>
+                        <div class="process-label">Selected (≥80 pts)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Key Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card animate-in">
+                    <div class="metric-value">25</div>
+                    <div class="metric-label">Case Studies Analyzed</div>
+                    <div class="metric-detail">Across 6 sectors, 4 technologies</div>
+                </div>
+                <div class="metric-card animate-in">
+                    <div class="metric-value">62%</div>
+                    <div class="metric-label">Average Improvement</div>
+                    <div class="metric-detail">In detection & response capabilities</div>
+                </div>
+                <div class="metric-card animate-in">
+                    <div class="metric-value">287%</div>
+                    <div class="metric-label">Average ROI</div>
+                    <div class="metric-detail">Within 18 months</div>
+                </div>
+                <div class="metric-card animate-in">
+                    <div class="metric-value">$31.48B</div>
+                    <div class="metric-label">Market Size 2025</div>
+                    <div class="metric-detail">24.4% CAGR growth</div>
+                </div>
+            </div>
+            
+            <!-- Timeline -->
+            <div class="timeline-container animate-in">
+                <h2 class="timeline-title">Evolution of GenAI in Cybersecurity</h2>
+                <div class="timeline-wrapper" id="timelineContainer"></div>
+            </div>
+            
+            <!-- Performance Chart -->
+            <div class="chart-container animate-in">
+                <h2 class="timeline-title">AI vs Human Performance Evolution</h2>
+                <div class="chart-wrapper">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Key Findings -->
+            <div class="metrics-grid" style="margin-top: 40px;">
+                <div class="metric-card animate-in">
+                    <div style="font-size: 36px; color: var(--primary-color); margin-bottom: 10px;">01</div>
+                    <h3 style="font-size: 18px; margin-bottom: 10px;">Human-AI Collaboration Essential</h3>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        Most successful implementations maintain human oversight while leveraging AI for scale
+                    </p>
+                </div>
+                <div class="metric-card animate-in">
+                    <div style="font-size: 36px; color: var(--primary-color); margin-bottom: 10px;">02</div>
+                    <h3 style="font-size: 18px; margin-bottom: 10px;">AI Surpasses Human Experts</h3>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        March 2025: First AI to outperform elite human red teams by 24%
+                    </p>
+                </div>
+                <div class="metric-card animate-in">
+                    <div style="font-size: 36px; color: var(--primary-color); margin-bottom: 10px;">03</div>
+                    <h3 style="font-size: 18px; margin-bottom: 10px;">Organizational Change Critical</h3>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        Success depends on culture, governance, and executive sponsorship
+                    </p>
+                </div>
+                <div class="metric-card animate-in">
+                    <div style="font-size: 36px; color: var(--primary-color); margin-bottom: 10px;">04</div>
+                    <h3 style="font-size: 18px; margin-bottom: 10px;">Dual-Use Creates Arms Race</h3>
+                    <p style="font-size: 14px; color: var(--text-secondary);">
+                        Every defensive innovation enables new attack vectors
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="action-btn" onclick="showSection('cases')">
+                    <span>📊</span> Explore Case Studies
+                </button>
+                <button class="action-btn" onclick="window.open('https://frehman01.github.io/genai-network-explorer.html', '_blank')">
+                    <span>🕸️</span> View Network Analysis
+                </button>
+                <button class="action-btn export-btn" onclick="exportFullReport()">
+                    <span>📥</span> Export Full Report
+                </button>
+            </div>
+        </section>
+        
+        <!-- Case Studies Section -->
+        <section class="section" id="cases">
+            <h2 style="font-size: 32px; margin-bottom: 30px;">Case Study Database</h2>
+            
+            <!-- Filters -->
+            <div class="filters-container">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">Sector</label>
+                        <select class="filter-select" id="sectorFilter">
+                            <option value="all">All Sectors</option>
+                            <option value="technology">Technology</option>
+                            <option value="financial">Financial Services</option>
+                            <option value="healthcare">Healthcare</option>
+                            <option value="government">Government</option>
+                            <option value="security">Security</option>
+                            <option value="academic">Academic</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Technology</label>
+                        <select class="filter-select" id="techFilter">
+                            <option value="all">All Technologies</option>
+                            <option value="llm">LLM</option>
+                            <option value="gan">GAN</option>
+                            <option value="hybrid">Hybrid</option>
+                            <option value="agentic">Agentic AI</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Use Case</label>
+                        <select class="filter-select" id="useCaseFilter">
+                            <option value="all">All Use Cases</option>
+                            <option value="threat-detection">Threat Detection</option>
+                            <option value="soc-automation">SOC Automation</option>
+                            <option value="phishing">Phishing Prevention</option>
+                            <option value="adversarial">Adversarial Testing</option>
+                            <option value="synthetic-data">Synthetic Data</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Year</label>
+                        <select class="filter-select" id="yearFilter">
+                            <option value="all">All Years</option>
+                            <option value="2021">2021</option>
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+                    <div class="search-container">
+                        <label class="filter-label">Search</label>
+                        <input type="text" class="search-input" id="searchInput" 
+                               placeholder="Search by name, organization, or technology...">
+                    </div>
+                </div>
+                <div class="action-buttons" style="margin-top: 20px;">
+                    <button class="action-btn" onclick="resetFilters()">Reset Filters</button>
+                    <button class="action-btn" onclick="compareSelected()">Compare Selected</button>
+                    <button class="action-btn export-btn" onclick="exportCases()">Export Data</button>
+                </div>
+            </div>
+            
+            <!-- Case Cards -->
+            <div class="cases-grid" id="casesGrid"></div>
+            
+            <!-- Comparison Panel -->
+            <div class="comparison-panel" id="comparisonPanel">
+                <div class="comparison-header">
+                    <h3 class="comparison-title">Case Comparison</h3>
+                    <button class="close-btn" onclick="closeComparison()">×</button>
+                </div>
+                <div class="comparison-grid" id="comparisonGrid"></div>
+            </div>
+        </section>
+        
+        
+        <!-- Risk Assessment Section -->
+        <section class="section" id="risk">
+            <h2 style="font-size: 32px; margin-bottom: 30px;">Comprehensive Risk-Benefit Assessment</h2>
+            
+            <div class="risk-container">
+                <div class="scenario-selector">
+                    <h3 class="panel-title">Select Your Organization Profile</h3>
+                    <div class="scenario-grid">
+                        <div class="scenario-card" data-scenario="financial" onclick="loadScenario('financial')">
+                            <div class="scenario-icon">🏦</div>
+                            <div class="scenario-name">Financial Services</div>
+                        </div>
+                        <div class="scenario-card" data-scenario="healthcare" onclick="loadScenario('healthcare')">
+                            <div class="scenario-icon">🏥</div>
+                            <div class="scenario-name">Healthcare</div>
+                        </div>
+                        <div class="scenario-card" data-scenario="technology" onclick="loadScenario('technology')">
+                            <div class="scenario-icon">💻</div>
+                            <div class="scenario-name">Technology</div>
+                        </div>
+                        <div class="scenario-card" data-scenario="government" onclick="loadScenario('government')">
+                            <div class="scenario-icon">🏛️</div>
+                            <div class="scenario-name">Government</div>
+                        </div>
+                        <div class="scenario-card active" data-scenario="custom" onclick="loadScenario('custom')">
+                            <div class="scenario-icon">⚙️</div>
+                            <div class="scenario-name">Custom</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="risk-grid">
+                    <div class="risk-panel">
+                        <h3 class="panel-title risk-title">
+                            <span>⚠️</span> Risk Factors
+                        </h3>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Model Hallucination Risk</div>
+                            <div class="factor-description">Likelihood of AI generating false or misleading security intelligence</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider risk-slider" id="hallucinationRisk" min="0" max="100" value="30">
+                                <span class="slider-value risk-value" id="hallucinationRiskValue">30</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Adversarial Attack Vulnerability</div>
+                            <div class="factor-description">Susceptibility to prompt injection, data poisoning, or model manipulation</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider risk-slider" id="adversarialRisk" min="0" max="100" value="40">
+                                <span class="slider-value risk-value" id="adversarialRiskValue">40</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Regulatory Compliance Complexity</div>
+                            <div class="factor-description">Challenges meeting GDPR, CCPA, sector-specific regulations</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider risk-slider" id="complianceRisk" min="0" max="100" value="50">
+                                <span class="slider-value risk-value" id="complianceRiskValue">50</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Integration Complexity</div>
+                            <div class="factor-description">Difficulty integrating with existing security infrastructure</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider risk-slider" id="integrationRisk" min="0" max="100" value="35">
+                                <span class="slider-value risk-value" id="integrationRiskValue">35</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Skills Gap & Training Requirements</div>
+                            <div class="factor-description">Need for specialized expertise and organizational change</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider risk-slider" id="skillsRisk" min="0" max="100" value="45">
+                                <span class="slider-value risk-value" id="skillsRiskValue">45</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="risk-panel">
+                        <h3 class="panel-title benefit-title">
+                            <span>✅</span> Benefit Factors
+                        </h3>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Threat Detection Improvement</div>
+                            <div class="factor-description">Expected enhancement in identifying and responding to threats</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider benefit-slider" id="detectionBenefit" min="0" max="100" value="70">
+                                <span class="slider-value benefit-value" id="detectionBenefitValue">70</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Operational Efficiency Gains</div>
+                            <div class="factor-description">Reduction in manual tasks and alert processing time</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider benefit-slider" id="efficiencyBenefit" min="0" max="100" value="65">
+                                <span class="slider-value benefit-value" id="efficiencyBenefitValue">65</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">False Positive Reduction</div>
+                            <div class="factor-description">Decrease in incorrect threat alerts requiring investigation</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider benefit-slider" id="falsePositiveBenefit" min="0" max="100" value="55">
+                                <span class="slider-value benefit-value" id="falsePositiveBenefitValue">55</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Cost Reduction Potential</div>
+                            <div class="factor-description">Expected savings from automation and improved efficiency</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider benefit-slider" id="costBenefit" min="0" max="100" value="60">
+                                <span class="slider-value benefit-value" id="costBenefitValue">60</span>
+                            </div>
+                        </div>
+                        
+                        <div class="factor-group">
+                            <div class="factor-label">Scalability & Future-Proofing</div>
+                            <div class="factor-description">Ability to handle growing threats and evolving attack vectors</div>
+                            <div class="slider-container">
+                                <input type="range" class="slider benefit-slider" id="scalabilityBenefit" min="0" max="100" value="75">
+                                <span class="slider-value benefit-value" id="scalabilityBenefitValue">75</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="results-panel" style="margin-top: 30px;">
+                    <div class="results-grid">
+                        <div class="score-display">
+                            <div class="overall-score" id="overallScore">65</div>
+                            <div class="score-label">Implementation Score</div>
+                            <canvas id="gaugeChart" width="200" height="100"></canvas>
+                        </div>
+                        <div>
+                            <div class="recommendation favorable" id="recommendation">
+                                <div class="recommendation-title">Favorable Implementation</div>
+                                <div class="recommendation-text">Based on your risk-benefit profile, implementing GenAI in your cybersecurity infrastructure shows strong potential. Focus on addressing compliance and skills gap challenges while leveraging the significant efficiency gains.</div>
+                            </div>
+                            <div class="chart-wrapper" style="max-width: 500px; margin: 30px auto;">
+                                <canvas id="riskRadar"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="insights-section">
+                    <h3 class="insights-title">Contextual Insights Based on Your Profile</h3>
+                    <div id="insightsContainer">
+                        <!-- Insights will be dynamically generated -->
+                    </div>
+                </div>
+                
+                <div class="chart-container" style="margin-top: 30px;">
+                    <h3 class="timeline-title">Risk Mitigation Strategies</h3>
+                    <div style="padding: 20px;">
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <h4 style="font-size: 18px; color: var(--primary-color); margin-bottom: 10px;">Model Validation</h4>
+                                <p style="font-size: 14px; color: var(--text-secondary);">Implement robust testing frameworks with human oversight for critical decisions</p>
+                            </div>
+                            <div class="metric-card">
+                                <h4 style="font-size: 18px; color: var(--primary-color); margin-bottom: 10px;">Security Hardening</h4>
+                                <p style="font-size: 14px; color: var(--text-secondary);">Deploy adversarial training and continuous monitoring for AI vulnerabilities</p>
+                            </div>
+                            <div class="metric-card">
+                                <h4 style="font-size: 18px; color: var(--primary-color); margin-bottom: 10px;">Compliance Framework</h4>
+                                <p style="font-size: 14px; color: var(--text-secondary);">Establish clear governance policies aligned with regulatory requirements</p>
+                            </div>
+                            <div class="metric-card">
+                                <h4 style="font-size: 18px; color: var(--primary-color); margin-bottom: 10px;">Phased Integration</h4>
+                                <p style="font-size: 14px; color: var(--text-secondary);">Start with pilot programs before full-scale deployment</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Case Detail Modal -->
+    <div class="modal" id="caseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Case Study Details</h3>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        // Global Data Store
+        const caseStudies = [
+            {
+                id: 1,
+                name: "IBM Cybersecurity Assistant",
+                organization: "IBM",
+                sector: "technology",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 44,
+                accuracy: 92,
+                roi: 250,
+                implementationTime: 6,
+                description: "Comprehensive GenAI deployment built on watsonx platform, processing 65+ trillion cybersecurity signals daily"
+            },
+            {
+                id: 2,
+                name: "CrowdStrike Charlotte AI",
+                organization: "CrowdStrike",
+                sector: "security",
+                technology: "agentic",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 600,
+                accuracy: 100,
+                roi: 450,
+                implementationTime: 3,
+                description: "Autonomous threat detection through agentic workflows, achieving 6x faster threat neutralization"
+            },
+            {
+                id: 3,
+                name: "Microsoft Defender AI",
+                organization: "Microsoft",
+                sector: "technology",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 89,
+                accuracy: 95,
+                roi: 320,
+                implementationTime: 4,
+                description: "Meta-security approach using AI to protect AI applications from emerging threats"
+            },
+            {
+                id: 4,
+                name: "Meta LLM Incident Response",
+                organization: "Meta",
+                sector: "technology",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 42,
+                accuracy: 42,
+                roi: 180,
+                implementationTime: 8,
+                description: "LLM-powered system achieving 42% accuracy in identifying root causes of production incidents"
+            },
+            {
+                id: 5,
+                name: "IBM QRadar Suite",
+                organization: "IBM",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2023,
+                improvement: 55,
+                accuracy: 85,
+                roi: 380,
+                implementationTime: 4,
+                description: "Enterprise AI implementation across 400+ Managed Security Services clients"
+            },
+            {
+                id: 6,
+                name: "Hoxhunt AI Spear Phishing",
+                organization: "Hoxhunt",
+                sector: "security",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2025,
+                improvement: 86,
+                accuracy: 124,
+                roi: 562,
+                implementationTime: 2,
+                description: "AI agent 'JKR' achieving the 'Skynet Moment' - first AI to outperform elite human red teams"
+            },
+            {
+                id: 7,
+                name: "Google AI Red Team",
+                organization: "Google",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "adversarial",
+                year: 2022,
+                improvement: 75,
+                accuracy: 88,
+                roi: null,
+                implementationTime: 12,
+                description: "Systematic framework for adversarial testing across enterprise AI systems"
+            },
+            {
+                id: 8,
+                name: "DARPA SABER Program",
+                organization: "DARPA",
+                sector: "government",
+                technology: "hybrid",
+                useCase: "adversarial",
+                year: 2024,
+                improvement: null,
+                accuracy: null,
+                roi: null,
+                implementationTime: 36,
+                description: "Military AI red teams for assessing autonomous ground and aerial systems"
+            },
+            {
+                id: 9,
+                name: "PassGAN Implementation",
+                organization: "Stevens Institute",
+                sector: "academic",
+                technology: "gan",
+                useCase: "synthetic-data",
+                year: 2024,
+                improvement: 47,
+                accuracy: 47,
+                roi: null,
+                implementationTime: 12,
+                description: "Wasserstein GAN for password security testing, outperforming traditional tools"
+            },
+            {
+                id: 10,
+                name: "Singapore GTA GPT-3 Study",
+                organization: "Government Technology Agency",
+                sector: "government",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2021,
+                improvement: 35,
+                accuracy: 78,
+                roi: null,
+                implementationTime: 3,
+                description: "Early evidence of GenAI potential in social engineering attacks"
+            },
+            {
+                id: 11,
+                name: "Deutsche Bank Fraud Detection",
+                organization: "Deutsche Bank",
+                sector: "financial",
+                technology: "hybrid",
+                useCase: "threat-detection",
+                year: 2023,
+                improvement: 65,
+                accuracy: 94,
+                roi: 420,
+                implementationTime: 9,
+                description: "Real-time fraud detection system processing millions of transactions"
+            },
+            {
+                id: 12,
+                name: "University of Rochester Medical",
+                organization: "URMC",
+                sector: "healthcare",
+                technology: "llm",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 72,
+                accuracy: 89,
+                roi: 280,
+                implementationTime: 12,
+                description: "AI-powered security for medical imaging and patient data protection"
+            },
+            {
+                id: 13,
+                name: "D3 Smart SOAR Platform",
+                organization: "D3 Security",
+                sector: "security",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 90,
+                accuracy: 92,
+                roi: 485,
+                implementationTime: 3,
+                description: "Comprehensive SOAR platform achieving 90%+ alert volume reduction"
+            },
+            {
+                id: 14,
+                name: "KnowBe4 AIDA Platform",
+                organization: "KnowBe4",
+                sector: "security",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2024,
+                improvement: 85,
+                accuracy: 91,
+                roi: 562,
+                implementationTime: 1,
+                description: "Enterprise-scale phishing simulation and training platform"
+            },
+            {
+                id: 15,
+                name: "JP Morgan Chase Automation",
+                organization: "JP Morgan Chase",
+                sector: "financial",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2023,
+                improvement: 78,
+                accuracy: 93,
+                roi: 395,
+                implementationTime: 6,
+                description: "Loan processing automation with integrated security analysis"
+            },
+            {
+                id: 16,
+                name: "Wells Fargo False Positive Reduction",
+                organization: "Wells Fargo",
+                sector: "financial",
+                technology: "hybrid",
+                useCase: "threat-detection",
+                year: 2024,
+                improvement: 52,
+                accuracy: 88,
+                roi: 340,
+                implementationTime: 7,
+                description: "Focused implementation addressing false positive reduction in fraud detection"
+            },
+            {
+                id: 17,
+                name: "Royal Bank of Scotland Training",
+                organization: "RBS",
+                sector: "financial",
+                technology: "llm",
+                useCase: "phishing",
+                year: 2024,
+                improvement: 78,
+                accuracy: 85,
+                roi: 425,
+                implementationTime: 5,
+                description: "Comprehensive organizational engagement beyond technical implementation"
+            },
+            {
+                id: 18,
+                name: "TidalHealth Clinical Search",
+                organization: "TidalHealth",
+                sector: "healthcare",
+                technology: "llm",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 75,
+                accuracy: 91,
+                roi: 265,
+                implementationTime: 4,
+                description: "IBM Watson integration reducing clinical search time with security"
+            },
+            {
+                id: 19,
+                name: "AWS SageMaker Synthetic Data",
+                organization: "Amazon",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 96,
+                accuracy: 99.6,
+                roi: null,
+                implementationTime: 2,
+                description: "Industrial-scale synthetic cybersecurity dataset generation"
+            },
+            {
+                id: 20,
+                name: "Azure ML Responsible AI",
+                organization: "Microsoft",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 89,
+                accuracy: 94,
+                roi: null,
+                implementationTime: 3,
+                description: "Responsible AI framework with built-in differential privacy"
+            },
+            {
+                id: 21,
+                name: "OpenAI Multi-Modal Red Team",
+                organization: "OpenAI",
+                sector: "technology",
+                technology: "llm",
+                useCase: "adversarial",
+                year: 2023,
+                improvement: null,
+                accuracy: null,
+                roi: null,
+                implementationTime: 18,
+                description: "External expert network for AI safety testing"
+            },
+            {
+                id: 22,
+                name: "Vertex AI Privacy Trade-offs",
+                organization: "Google",
+                sector: "technology",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: 89.9,
+                accuracy: 89.9,
+                roi: null,
+                implementationTime: 3,
+                description: "Balanced privacy-utility trade-offs for enterprise deployment"
+            },
+            {
+                id: 23,
+                name: "DARPA Unraveled Dataset",
+                organization: "DARPA",
+                sector: "government",
+                technology: "gan",
+                useCase: "synthetic-data",
+                year: 2023,
+                improvement: null,
+                accuracy: null,
+                roi: null,
+                implementationTime: 24,
+                description: "First comprehensive semi-synthetic APT dataset"
+            },
+            {
+                id: 24,
+                name: "Swimlane Turbine Automation",
+                organization: "Swimlane",
+                sector: "security",
+                technology: "hybrid",
+                useCase: "soc-automation",
+                year: 2024,
+                improvement: 83,
+                accuracy: 90,
+                roi: 410,
+                implementationTime: 1,
+                description: "Automated 30-day client onboarding process"
+            },
+            {
+                id: 25,
+                name: "MDPI GenAI Framework",
+                organization: "Academic Consortium",
+                sector: "academic",
+                technology: "hybrid",
+                useCase: "synthetic-data",
+                year: 2025,
+                improvement: 95,
+                accuracy: 95,
+                roi: null,
+                implementationTime: 18,
+                description: "Multi-domain approach combining GANs, VAEs, and traditional ML"
+            }
+        ];
+        
+        // State Management
+        let selectedCases = [];
+        let filteredCases = [...caseStudies];
+        let currentSection = 'executive';
+        
+        // Risk-Benefit State
+        let riskFactors = {
+            hallucination: 30,
+            adversarial: 40,
+            compliance: 50,
+            integration: 35,
+            skills: 45
+        };
+
+        let benefitFactors = {
+            detection: 70,
+            efficiency: 65,
+            falsePositive: 55,
+            cost: 60,
+            scalability: 75
+        };
+        
+        // Scenario profiles based on case study analysis
+        const scenarios = {
+            financial: {
+                risks: { hallucination: 25, adversarial: 45, compliance: 70, integration: 40, skills: 35 },
+                benefits: { detection: 85, efficiency: 78, falsePositive: 68, cost: 75, scalability: 80 }
+            },
+            healthcare: {
+                risks: { hallucination: 35, adversarial: 30, compliance: 85, integration: 55, skills: 60 },
+                benefits: { detection: 68, efficiency: 55, falsePositive: 42, cost: 50, scalability: 60 }
+            },
+            technology: {
+                risks: { hallucination: 20, adversarial: 50, compliance: 35, integration: 25, skills: 20 },
+                benefits: { detection: 92, efficiency: 88, falsePositive: 78, cost: 85, scalability: 95 }
+            },
+            government: {
+                risks: { hallucination: 40, adversarial: 60, compliance: 75, integration: 65, skills: 70 },
+                benefits: { detection: 58, efficiency: 45, falsePositive: 52, cost: 40, scalability: 55 }
+            }
+        };
+
+        let radarChart = null;
+        let gaugeChart = null;
+        
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+                initializeApp();
+            }, 1500);
+        });
+        
+        function initializeApp() {
+            setupNavigation();
+            renderTimeline();
+            renderPerformanceChart();
+            renderCases();
+            setupFilters();
+            setupRiskAssessment();
+            animateElements();
+        }
+        
+        // Navigation
+        function setupNavigation() {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.dataset.section;
+                    showSection(section);
+                });
+            });
+        }
+        
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.section === sectionId) {
+                    link.classList.add('active');
+                }
+            });
+            
+            currentSection = sectionId;
+        }
+        
+        // Timeline Visualization
+        function renderTimeline() {
+            const container = document.getElementById('timelineContainer');
+            const width = container.offsetWidth;
+            const height = 300;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            const events = [
+                { year: 2020, label: 'GPT-3 Launch', description: 'Foundation phase begins' },
+                { year: 2021, label: 'First Evidence', description: 'AI phishing outperforms humans' },
+                { year: 2022, label: 'ChatGPT Revolution', description: '51% budget increase' },
+                { year: 2023, label: 'Enterprise Adoption', description: 'Major deployments begin' },
+                { year: 2024, label: 'Market Explosion', description: '$25.35B market size' },
+                { year: 2025, label: 'Skynet Moment', description: 'AI surpasses humans by 24%' }
+            ];
+            
+            const xScale = d3.scaleLinear()
+                .domain([2020, 2025])
+                .range([50, width - 50]);
+            
+            // Draw timeline line
+            svg.append('line')
+                .attr('x1', xScale(2020))
+                .attr('y1', height / 2)
+                .attr('x2', xScale(2025))
+                .attr('y2', height / 2)
+                .attr('stroke', 'var(--primary-color)')
+                .attr('stroke-width', 3);
+            
+            // Add events
+            const eventGroups = svg.selectAll('.event')
+                .data(events)
+                .enter()
+                .append('g')
+                .attr('class', 'event')
+                .attr('transform', (d, i) => `translate(${xScale(d.year)}, ${height / 2})`);
+            
+            eventGroups.append('circle')
+                .attr('r', 12)
+                .attr('fill', (d, i) => i === events.length - 1 ? 'var(--danger)' : 'var(--primary-color)')
+                .attr('stroke', 'var(--bg-primary)')
+                .attr('stroke-width', 3)
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event, d) {
+                    showTooltip(event, `${d.label}: ${d.description}`);
+                })
+                .on('mouseout', hideTooltip);
+            
+            eventGroups.append('text')
+                .attr('y', -20)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'var(--text-primary)')
+                .style('font-size', '14px')
+                .style('font-weight', '600')
+                .text(d => d.year);
+            
+            eventGroups.append('text')
+                .attr('y', 35)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'var(--text-secondary)')
+                .style('font-size', '12px')
+                .text(d => d.label)
+                .each(function(d) {
+                    const text = d3.select(this);
+                    const words = d.label.split(' ');
+                    text.text('');
+                    words.forEach((word, i) => {
+                        text.append('tspan')
+                            .attr('x', 0)
+                            .attr('dy', i ? '1.1em' : '0')
+                            .text(word);
+                    });
+                });
+        }
+        
+        // Performance Chart
+        function renderPerformanceChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', 'Mar 2025'],
+                    datasets: [{
+                        label: 'AI Performance',
+                        data: [45, 52, 68, 85, 94, 124],
+                        borderColor: 'rgb(37, 99, 235)',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgb(37, 99, 235)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }, {
+                        label: 'Human Baseline',
+                        data: [100, 100, 100, 100, 100, 100],
+                        borderColor: 'rgb(124, 58, 237)',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'var(--text-primary)',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'var(--card-bg)',
+                            titleColor: 'var(--text-primary)',
+                            bodyColor: 'var(--text-secondary)',
+                            borderColor: 'var(--border-color)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        return `AI: ${context.parsed.y}% of human capability`;
+                                    }
+                                    return 'Human Expert Baseline';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 130,
+                            ticks: {
+                                color: 'var(--text-secondary)',
+                                callback: value => value + '%'
+                            },
+                            grid: {
+                                color: 'var(--border-color)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'var(--text-secondary)'
+                            },
+                            grid: {
+                                color: 'var(--border-color)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Case Studies
+        function renderCases() {
+            const grid = document.getElementById('casesGrid');
+            grid.innerHTML = '';
+            
+            filteredCases.forEach(caseStudy => {
+                const card = document.createElement('div');
+                card.className = 'case-card';
+                if (selectedCases.includes(caseStudy.id)) {
+                    card.classList.add('selected');
+                }
+                
+                card.innerHTML = `
+                    <div class="case-header">
+                        <h3 class="case-title">${caseStudy.name}</h3>
+                        <input type="checkbox" class="case-checkbox" 
+                               ${selectedCases.includes(caseStudy.id) ? 'checked' : ''}
+                               onclick="toggleCase(${caseStudy.id}, event)">
+                    </div>
+                    <div class="case-org">${caseStudy.organization}</div>
+                    <div class="case-meta">
+                        <span class="meta-tag">${caseStudy.sector}</span>
+                        <span class="meta-tag">${caseStudy.technology.toUpperCase()}</span>
+                        <span class="meta-tag">${caseStudy.year}</span>
+                    </div>
+                    <p style="font-size: 14px; color: var(--text-secondary); margin: 15px 0;">
+                        ${caseStudy.description}
+                    </p>
+                    <div class="case-metrics">
+                        ${caseStudy.improvement ? `
+                            <div class="case-metric">
+                                <div class="case-metric-value">${caseStudy.improvement}%</div>
+                                <div class="case-metric-label">Improvement</div>
+                            </div>
+                        ` : ''}
+                        ${caseStudy.roi ? `
+                            <div class="case-metric">
+                                <div class="case-metric-value">${caseStudy.roi}%</div>
+                                <div class="case-metric-label">ROI</div>
+                            </div>
+                        ` : ''}
+                        <div class="case-metric">
+                            <div class="case-metric-value">${caseStudy.implementationTime}mo</div>
+                            <div class="case-metric-label">Time</div>
+                        </div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', function(e) {
+                    if (!e.target.classList.contains('case-checkbox')) {
+                        showCaseDetail(caseStudy);
+                    }
+                });
+                
+                grid.appendChild(card);
+            });
+            
+            if (filteredCases.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No cases match your filters</div>';
+            }
+        }
+        
+        function toggleCase(id, event) {
+            event.stopPropagation();
+            const index = selectedCases.indexOf(id);
+            if (index > -1) {
+                selectedCases.splice(index, 1);
+            } else {
+                selectedCases.push(id);
+            }
+            renderCases();
+        }
+        
+        function showCaseDetail(caseStudy) {
+            const modal = document.getElementById('caseModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = caseStudy.name;
+            modalBody.innerHTML = `
+                <div style="display: grid; gap: 20px;">
+                    <div>
+                        <h4 style="color: var(--primary-color); margin-bottom: 10px;">Overview</h4>
+                        <p>${caseStudy.description}</p>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--primary-color); margin-bottom: 10px;">Key Metrics</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                            ${caseStudy.improvement ? `
+                                <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color);">${caseStudy.improvement}%</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Performance Improvement</div>
+                                </div>
+                            ` : ''}
+                            ${caseStudy.accuracy ? `
+                                <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color);">${caseStudy.accuracy}%</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Accuracy</div>
+                                </div>
+                            ` : ''}
+                            ${caseStudy.roi ? `
+                                <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: 700; color: var(--success);">${caseStudy.roi}%</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">Return on Investment</div>
+                                </div>
+                            ` : ''}
+                            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: var(--primary-color);">${caseStudy.implementationTime}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Months to Deploy</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--primary-color); margin-bottom: 10px;">Implementation Details</h4>
+                        <div style="display: grid; gap: 10px;">
+                            <div><strong>Organization:</strong> ${caseStudy.organization}</div>
+                            <div><strong>Sector:</strong> ${caseStudy.sector}</div>
+                            <div><strong>Technology:</strong> ${caseStudy.technology.toUpperCase()}</div>
+                            <div><strong>Use Case:</strong> ${caseStudy.useCase.replace('-', ' ')}</div>
+                            <div><strong>Year:</strong> ${caseStudy.year}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('caseModal').classList.remove('active');
+        }
+        
+        // Filters
+        function setupFilters() {
+            document.getElementById('sectorFilter').addEventListener('change', applyFilters);
+            document.getElementById('techFilter').addEventListener('change', applyFilters);
+            document.getElementById('useCaseFilter').addEventListener('change', applyFilters);
+            document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+        }
+        
+        function applyFilters() {
+            const sector = document.getElementById('sectorFilter').value;
+            const tech = document.getElementById('techFilter').value;
+            const useCase = document.getElementById('useCaseFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredCases = caseStudies.filter(c => {
+                const matchSector = sector === 'all' || c.sector === sector;
+                const matchTech = tech === 'all' || c.technology === tech;
+                const matchUseCase = useCase === 'all' || c.useCase === useCase;
+                const matchYear = year === 'all' || c.year.toString() === year;
+                const matchSearch = !search || 
+                    c.name.toLowerCase().includes(search) ||
+                    c.organization.toLowerCase().includes(search) ||
+                    c.description.toLowerCase().includes(search);
+                
+                return matchSector && matchTech && matchUseCase && matchYear && matchSearch;
+            });
+            
+            renderCases();
+        }
+        
+        function resetFilters() {
+            document.getElementById('sectorFilter').value = 'all';
+            document.getElementById('techFilter').value = 'all';
+            document.getElementById('useCaseFilter').value = 'all';
+            document.getElementById('yearFilter').value = 'all';
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+        }
+        
+        // Comparison
+        function compareSelected() {
+            if (selectedCases.length < 2) {
+                alert('Please select at least 2 cases to compare');
+                return;
+            }
+            
+            const panel = document.getElementById('comparisonPanel');
+            const grid = document.getElementById('comparisonGrid');
+            
+            grid.innerHTML = '';
+            
+            selectedCases.forEach(id => {
+                const caseStudy = caseStudies.find(c => c.id === id);
+                const card = document.createElement('div');
+                card.className = 'comparison-card';
+                
+                card.innerHTML = `
+                    <h4 class="comparison-card-title">${caseStudy.name}</h4>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Organization</span>
+                        <span class="comparison-value">${caseStudy.organization}</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Sector</span>
+                        <span class="comparison-value">${caseStudy.sector}</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Technology</span>
+                        <span class="comparison-value">${caseStudy.technology.toUpperCase()}</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Improvement</span>
+                        <span class="comparison-value">${caseStudy.improvement || 'N/A'}%</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">ROI</span>
+                        <span class="comparison-value">${caseStudy.roi || 'N/A'}%</span>
+                    </div>
+                    <div class="comparison-item">
+                        <span class="comparison-label">Time</span>
+                        <span class="comparison-value">${caseStudy.implementationTime} months</span>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+            
+            panel.classList.add('active');
+        }
+        
+        function closeComparison() {
+            document.getElementById('comparisonPanel').classList.remove('active');
+        }
+        
+        // Network Visualization
+        function initializeNetwork() {
+            if (window.networkInitialized) {
+                updateNetworkView(currentNetworkView);
+                return;
+            }
+            
+            renderNetwork();
+            renderDistributionChart();
+            window.networkInitialized = true;
+        }
+        
+        function renderNetwork() {
+            const container = document.getElementById('networkCanvas');
+            const width = container.offsetWidth;
+            const height = 600;
+            
+            // Clear existing content
+            d3.select(container).selectAll("*").remove();
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            const g = svg.append('g');
+            
+            // Color scales
+            const colorScale = {
+                tech: 'var(--primary-color)',
+                threat: 'var(--danger)',
+                impl: 'var(--success)'
+            };
+            
+            // Create force simulation
+            networkSimulation = d3.forceSimulation(networkData.nodes)
+                .force('link', d3.forceLink(networkData.links).id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-500))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(40));
+            
+            // Create links
+            const links = g.append('g')
+                .selectAll('line')
+                .data(networkData.links)
+                .join('line')
+                .attr('class', 'network-link')
+                .attr('stroke', 'var(--border-color)')
+                .attr('stroke-width', d => d.strength * 3)
+                .attr('stroke-opacity', 0.4);
+            
+            // Create nodes
+            const nodes = g.append('g')
+                .selectAll('g')
+                .data(networkData.nodes)
+                .join('g')
+                .attr('class', 'network-node')
+                .style('cursor', 'pointer')
+                .call(drag(networkSimulation));
+            
+            // Add circles to nodes
+            nodes.append('circle')
+                .attr('r', d => d.type === 'impl' ? 30 : 25)
+                .attr('fill', d => colorScale[d.type])
+                .attr('stroke', 'var(--bg-primary)')
+                .attr('stroke-width', 2);
+            
+            // Add labels to nodes
+            nodes.append('text')
+                .attr('dy', 40)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .style('fill', 'var(--text-primary)')
+                .text(d => d.label);
+            
+            // Node interaction
+            nodes.on('click', function(event, d) {
+                highlightConnections(d);
+                updateNetworkInfoPanel(d);
+            })
+            .on('mouseover', function(event, d) {
+                showTooltip(event, `${d.label}: ${d.description}`);
+            })
+            .on('mouseout', hideTooltip);
+            
+            // Update positions on tick
+            networkSimulation.on('tick', () => {
+                links
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+            
+            // Zoom functionality
+            const zoom = d3.zoom()
+                .scaleExtent([0.5, 3])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+            
+            svg.call(zoom);
+            
+            // Drag functionality
+            function drag(simulation) {
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+                
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+                
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+                
+                return d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended);
+            }
+        }
+        
+        function highlightConnections(node) {
+            const connectedNodes = new Set();
+            const connectedLinks = new Set();
+            
+            networkData.links.forEach(link => {
+                if (link.source.id === node.id || link.target.id === node.id) {
+                    connectedNodes.add(link.source.id);
+                    connectedNodes.add(link.target.id);
+                    connectedLinks.add(link);
+                }
+            });
+            
+            // Update node opacity
+            d3.selectAll('.network-node')
+                .style('opacity', d => connectedNodes.has(d.id) ? 1 : 0.2);
+            
+            // Update link highlighting
+            d3.selectAll('.network-link')
+                .style('stroke-opacity', d => connectedLinks.has(d) ? 1 : 0.1);
+        }
+        
+        function updateNetworkInfoPanel(node) {
+            const connections = networkData.links.filter(l => 
+                l.source.id === node.id || l.target.id === node.id
+            );
+            
+            let html = `<div class="network-info-title">${node.label}</div>`;
+            html += `<div class="network-info-content">${node.description}<br><br>`;
+            html += `<strong>Connections:</strong><br>`;
+            
+            connections.forEach(conn => {
+                const otherNode = conn.source.id === node.id ? conn.target : conn.source;
+                html += `• ${otherNode.label}: ${conn.description}<br>`;
+            });
+            
+            html += `</div>`;
+            
+            document.getElementById('networkInfoPanel').innerHTML = html;
+        }
+        
+        function updateNetworkView(mode) {
+            currentNetworkView = mode;
+            
+            // Update button states
+            document.querySelectorAll('[data-mode]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Update visibility
+            if (mode === 'all') {
+                d3.selectAll('.network-node').style('opacity', 1);
+                d3.selectAll('.network-link').style('stroke-opacity', 0.4);
+            } else if (mode === 'tech') {
+                d3.selectAll('.network-node')
+                    .style('opacity', d => d.type === 'tech' || d.type === 'impl' ? 1 : 0.2);
+                d3.selectAll('.network-link')
+                    .style('stroke-opacity', d => 
+                        (d.source.type === 'tech' || d.target.type === 'tech') ? 0.4 : 0.1
+                    );
+            } else if (mode === 'threat') {
+                d3.selectAll('.network-node')
+                    .style('opacity', d => d.type === 'threat' || d.type === 'impl' ? 1 : 0.2);
+                d3.selectAll('.network-link')
+                    .style('stroke-opacity', d => 
+                        (d.source.type === 'threat' || d.target.type === 'threat') ? 0.4 : 0.1
+                    );
+            }
+        }
+        
+        function updateNetworkLayout(layout) {
+            currentNetworkLayout = layout;
+            
+            // Update button states
+            document.querySelectorAll('[data-layout]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.layout === layout) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            const container = document.getElementById('networkCanvas');
+            const width = container.offsetWidth;
+            const height = 600;
+            
+            if (networkSimulation) {
+                networkSimulation.stop();
+            }
+            
+            if (layout === 'force') {
+                networkData.nodes.forEach(n => {
+                    n.fx = null;
+                    n.fy = null;
+                });
+                networkSimulation.alpha(1).restart();
+            } else if (layout === 'radial') {
+                const radius = Math.min(width, height) / 3;
+                const techNodes = networkData.nodes.filter(n => n.type === 'tech');
+                const threatNodes = networkData.nodes.filter(n => n.type === 'threat');
+                const implNodes = networkData.nodes.filter(n => n.type === 'impl');
+                
+                // Position nodes in circles
+                techNodes.forEach((n, i) => {
+                    const angle = (i / techNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * 0.5 * Math.cos(angle);
+                    n.fy = height/2 + radius * 0.5 * Math.sin(angle);
+                });
+                
+                threatNodes.forEach((n, i) => {
+                    const angle = (i / threatNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * Math.cos(angle);
+                    n.fy = height/2 + radius * Math.sin(angle);
+                });
+                
+                implNodes.forEach((n, i) => {
+                    const angle = (i / implNodes.length) * 2 * Math.PI;
+                    n.fx = width/2 + radius * 1.5 * Math.cos(angle);
+                    n.fy = height/2 + radius * 1.5 * Math.sin(angle);
+                });
+                
+                networkSimulation.alpha(0.5).restart();
+            } else if (layout === 'hierarchical') {
+                // Create hierarchical layout
+                const techY = height * 0.2;
+                const threatY = height * 0.5;
+                const implY = height * 0.8;
+                
+                networkData.nodes.forEach(n => {
+                    if (n.type === 'tech') {
+                        n.fy = techY;
+                        n.fx = null;
+                    } else if (n.type === 'threat') {
+                        n.fy = threatY;
+                        n.fx = null;
+                    } else {
+                        n.fy = implY;
+                        n.fx = null;
+                    }
+                });
+                
+                networkSimulation.alpha(0.5).restart();
+            }
+        }
+        
+        function renderDistributionChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            
+            // Prepare data
+            const sectorCounts = {};
+            const techCounts = {};
+            
+            caseStudies.forEach(cs => {
+                sectorCounts[cs.sector] = (sectorCounts[cs.sector] || 0) + 1;
+                techCounts[cs.technology] = (techCounts[cs.technology] || 0) + 1;
+            });
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(sectorCounts),
+                    datasets: [{
+                        label: 'Cases by Sector',
+                        data: Object.values(sectorCounts),
+                        backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                        borderColor: 'rgb(37, 99, 235)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'var(--text-secondary)'
+                            },
+                            grid: {
+                                color: 'var(--border-color)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'var(--text-secondary)'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Risk Assessment
+        function setupRiskAssessment() {
+            initializeSliders();
+            calculateScore();
+        }
+        
+        // Initialize sliders
+        function initializeSliders() {
+            // Risk sliders
+            document.querySelectorAll('.risk-slider').forEach(slider => {
+                slider.addEventListener('input', function() {
+                    const valueSpan = document.getElementById(this.id + 'Value');
+                    valueSpan.textContent = this.value;
+                    updateRiskFactor(this.id, parseInt(this.value));
+                    calculateScore();
+                });
+            });
+
+            // Benefit sliders
+            document.querySelectorAll('.benefit-slider').forEach(slider => {
+                slider.addEventListener('input', function() {
+                    const valueSpan = document.getElementById(this.id + 'Value');
+                    valueSpan.textContent = this.value;
+                    updateBenefitFactor(this.id, parseInt(this.value));
+                    calculateScore();
+                });
+            });
+        }
+
+        // Update risk factors
+        function updateRiskFactor(id, value) {
+            switch(id) {
+                case 'hallucinationRisk': riskFactors.hallucination = value; break;
+                case 'adversarialRisk': riskFactors.adversarial = value; break;
+                case 'complianceRisk': riskFactors.compliance = value; break;
+                case 'integrationRisk': riskFactors.integration = value; break;
+                case 'skillsRisk': riskFactors.skills = value; break;
+            }
+        }
+
+        // Update benefit factors
+        function updateBenefitFactor(id, value) {
+            switch(id) {
+                case 'detectionBenefit': benefitFactors.detection = value; break;
+                case 'efficiencyBenefit': benefitFactors.efficiency = value; break;
+                case 'falsePositiveBenefit': benefitFactors.falsePositive = value; break;
+                case 'costBenefit': benefitFactors.cost = value; break;
+                case 'scalabilityBenefit': benefitFactors.scalability = value; break;
+            }
+        }
+
+        // Calculate overall score
+        function calculateScore() {
+            const avgRisk = Object.values(riskFactors).reduce((a, b) => a + b, 0) / Object.values(riskFactors).length;
+            const avgBenefit = Object.values(benefitFactors).reduce((a, b) => a + b, 0) / Object.values(benefitFactors).length;
+            
+            // Weight benefits slightly higher as per case study success rates
+            const score = Math.round((avgBenefit * 0.6) + ((100 - avgRisk) * 0.4));
+            
+            updateDisplay(score, avgRisk, avgBenefit);
+            generateInsights(score, avgRisk, avgBenefit);
+        }
+
+        // Update display elements
+        function updateDisplay(score, avgRisk, avgBenefit) {
+            const scoreElement = document.getElementById('overallScore');
+            scoreElement.textContent = score;
+            
+            // Update color based on score
+            if (score < 40) {
+                scoreElement.style.color = 'var(--danger)';
+            } else if (score < 70) {
+                scoreElement.style.color = 'var(--warning)';
+            } else {
+                scoreElement.style.color = 'var(--success)';
+            }
+            
+            // Update recommendation
+            updateRecommendation(score, avgRisk, avgBenefit);
+            
+            // Update charts
+            updateRadarChart();
+            updateGaugeChart(score);
+        }
+
+        // Update recommendation
+        function updateRecommendation(score, avgRisk, avgBenefit) {
+            const recommendation = document.getElementById('recommendation');
+            let title, text, className;
+            
+            if (score < 40) {
+                className = 'high-risk';
+                title = 'High-Risk Implementation';
+                text = `With a score of ${score}, implementing GenAI poses significant challenges. Focus on risk mitigation strategies, particularly around ${getHighestRisk()} before proceeding. Consider starting with limited pilot programs.`;
+            } else if (score < 70) {
+                className = 'balanced';
+                title = 'Proceed with Caution';
+                text = `Your score of ${score} suggests a balanced risk-benefit profile. Success will depend on careful planning and phased implementation. Priority areas: ${getTopPriorities()}.`;
+            } else {
+                className = 'favorable';
+                title = 'Favorable Implementation';
+                text = `With a score of ${score}, your organization is well-positioned for GenAI adoption. Leverage your strengths in ${getTopBenefits()} while maintaining vigilance on ${getHighestRisk()}.`;
+            }
+            
+            recommendation.className = 'recommendation ' + className;
+            recommendation.innerHTML = `
+                <div class="recommendation-title">${title}</div>
+                <div class="recommendation-text">${text}</div>
+            `;
+        }
+
+        // Helper functions
+        function getHighestRisk() {
+            const risks = Object.entries(riskFactors).sort((a, b) => b[1] - a[1]);
+            const riskNames = {
+                hallucination: 'model hallucination',
+                adversarial: 'adversarial vulnerabilities',
+                compliance: 'regulatory compliance',
+                integration: 'system integration',
+                skills: 'skills gap'
+            };
+            return riskNames[risks[0][0]];
+        }
+
+        function getTopBenefits() {
+            const benefits = Object.entries(benefitFactors).sort((a, b) => b[1] - a[1]).slice(0, 2);
+            const benefitNames = {
+                detection: 'threat detection',
+                efficiency: 'operational efficiency',
+                falsePositive: 'false positive reduction',
+                cost: 'cost savings',
+                scalability: 'scalability'
+            };
+            return benefits.map(b => benefitNames[b[0]]).join(' and ');
+        }
+
+        function getTopPriorities() {
+            const priorities = [];
+            if (riskFactors.compliance > 60) priorities.push('regulatory alignment');
+            if (riskFactors.skills > 50) priorities.push('team training');
+            if (benefitFactors.efficiency > 70) priorities.push('process automation');
+            return priorities.join(', ') || 'balanced implementation';
+        }
+
+        // Update radar chart
+        function updateRadarChart() {
+            const ctx = document.getElementById('riskRadar').getContext('2d');
+            
+            if (radarChart) {
+                radarChart.destroy();
+            }
+            
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        'Threat Detection',
+                        'Efficiency',
+                        'False Positive Reduction',
+                        'Cost Savings',
+                        'Scalability',
+                        'Low Hallucination Risk',
+                        'Security',
+                        'Compliance Ready',
+                        'Easy Integration',
+                        'Skills Available'
+                    ],
+                    datasets: [{
+                        label: 'Your Profile',
+                        data: [
+                            benefitFactors.detection,
+                            benefitFactors.efficiency,
+                            benefitFactors.falsePositive,
+                            benefitFactors.cost,
+                            benefitFactors.scalability,
+                            100 - riskFactors.hallucination,
+                            100 - riskFactors.adversarial,
+                            100 - riskFactors.compliance,
+                            100 - riskFactors.integration,
+                            100 - riskFactors.skills
+                        ],
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: 'var(--primary-color)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'var(--primary-color)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }, {
+                        label: 'Industry Average',
+                        data: [75, 68, 52, 65, 70, 65, 60, 55, 65, 60],
+                        backgroundColor: 'rgba(200, 200, 200, 0.1)',
+                        borderColor: 'rgba(200, 200, 200, 0.5)',
+                        borderWidth: 1,
+                        pointBackgroundColor: 'rgba(200, 200, 200, 0.5)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20,
+                                color: 'var(--text-secondary)',
+                                backdropColor: 'transparent'
+                            },
+                            grid: {
+                                color: 'var(--border-color)'
+                            },
+                            pointLabels: {
+                                color: 'var(--text-secondary)',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'var(--text-primary)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update gauge chart
+        function updateGaugeChart(score) {
+            const ctx = document.getElementById('gaugeChart').getContext('2d');
+            
+            if (gaugeChart) {
+                gaugeChart.destroy();
+            }
+            
+            // Create a semi-circular gauge
+            const data = {
+                datasets: [{
+                    data: [score, 100 - score],
+                    backgroundColor: [
+                        score < 40 ? '#dc3545' : score < 70 ? '#ffc107' : '#28a745',
+                        '#e0e0e0'
+                    ],
+                    borderWidth: 0
+                }]
+            };
+            
+            gaugeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    rotation: -90,
+                    circumference: 180,
+                    cutout: '75%',
+                    responsive: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load scenario
+        function loadScenario(scenarioType) {
+            // Update active state
+            document.querySelectorAll('.scenario-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`[data-scenario="${scenarioType}"]`).classList.add('active');
+            
+            if (scenarioType === 'custom') {
+                // Reset to default values
+                return;
+            }
+            
+            const scenario = scenarios[scenarioType];
+            if (!scenario) return;
+            
+            // Update sliders
+            document.getElementById('hallucinationRisk').value = scenario.risks.hallucination;
+            document.getElementById('hallucinationRiskValue').textContent = scenario.risks.hallucination;
+            riskFactors.hallucination = scenario.risks.hallucination;
+            
+            document.getElementById('adversarialRisk').value = scenario.risks.adversarial;
+            document.getElementById('adversarialRiskValue').textContent = scenario.risks.adversarial;
+            riskFactors.adversarial = scenario.risks.adversarial;
+            
+            document.getElementById('complianceRisk').value = scenario.risks.compliance;
+            document.getElementById('complianceRiskValue').textContent = scenario.risks.compliance;
+            riskFactors.compliance = scenario.risks.compliance;
+            
+            document.getElementById('integrationRisk').value = scenario.risks.integration;
+            document.getElementById('integrationRiskValue').textContent = scenario.risks.integration;
+            riskFactors.integration = scenario.risks.integration;
+            
+            document.getElementById('skillsRisk').value = scenario.risks.skills;
+            document.getElementById('skillsRiskValue').textContent = scenario.risks.skills;
+            riskFactors.skills = scenario.risks.skills;
+            
+            document.getElementById('detectionBenefit').value = scenario.benefits.detection;
+            document.getElementById('detectionBenefitValue').textContent = scenario.benefits.detection;
+            benefitFactors.detection = scenario.benefits.detection;
+            
+            document.getElementById('efficiencyBenefit').value = scenario.benefits.efficiency;
+            document.getElementById('efficiencyBenefitValue').textContent = scenario.benefits.efficiency;
+            benefitFactors.efficiency = scenario.benefits.efficiency;
+            
+            document.getElementById('falsePositiveBenefit').value = scenario.benefits.falsePositive;
+            document.getElementById('falsePositiveBenefitValue').textContent = scenario.benefits.falsePositive;
+            benefitFactors.falsePositive = scenario.benefits.falsePositive;
+            
+            document.getElementById('costBenefit').value = scenario.benefits.cost;
+            document.getElementById('costBenefitValue').textContent = scenario.benefits.cost;
+            benefitFactors.cost = scenario.benefits.cost;
+            
+            document.getElementById('scalabilityBenefit').value = scenario.benefits.scalability;
+            document.getElementById('scalabilityBenefitValue').textContent = scenario.benefits.scalability;
+            benefitFactors.scalability = scenario.benefits.scalability;
+            
+            calculateScore();
+        }
+
+        // Generate insights
+        function generateInsights(score, avgRisk, avgBenefit) {
+            const insights = [];
+            
+            // Risk-based insights
+            if (riskFactors.compliance > 70) {
+                insights.push({
+                    type: 'risk',
+                    title: 'Regulatory Compliance Priority',
+                    text: 'Your high compliance risk score aligns with case studies showing 85% of organizations cite regulatory complexity as their primary challenge. Consider engaging legal counsel early and implementing privacy-by-design principles.'
+                });
+            }
+            
+            if (riskFactors.hallucination > 40 && benefitFactors.detection > 70) {
+                insights.push({
+                    type: 'neutral',
+                    title: 'Balance Accuracy with Verification',
+                    text: 'While expecting high threat detection improvements, maintain human-in-the-loop verification to mitigate hallucination risks. Case studies show 44% accuracy improvement when combining AI with human oversight.'
+                });
+            }
+            
+            // Benefit-based insights
+            if (benefitFactors.efficiency > 80) {
+                insights.push({
+                    type: 'benefit',
+                    title: 'Significant Efficiency Opportunity',
+                    text: 'Your efficiency expectations align with successful implementations. IBM QRadar achieved 55% faster triage, while D3 Smart SOAR reached 90% alert reduction. Focus on workflow automation for maximum impact.'
+                });
+            }
+            
+            if (benefitFactors.cost > 70 && riskFactors.skills > 50) {
+                insights.push({
+                    type: 'neutral',
+                    title: 'Investment in Training Critical',
+                    text: 'High cost savings expectations require skilled teams. Organizations investing in comprehensive training see 287% average ROI within 18 months, despite initial skills gap challenges.'
+                });
+            }
+            
+            // Comparative insights
+            if (score > 70 && avgRisk < 40) {
+                insights.push({
+                    type: 'benefit',
+                    title: 'Strong Implementation Candidate',
+                    text: 'Your profile matches successful technology sector implementations like CrowdStrike (6x faster threat response) and Meta (42% root cause accuracy). Consider aggressive timeline for competitive advantage.'
+                });
+            }
+            
+            // Display insights
+            const container = document.getElementById('insightsContainer');
+            container.innerHTML = insights.map(insight => `
+                <div class="insight-card ${insight.type}">
+                    <div class="insight-title">${insight.title}</div>
+                    <div class="insight-text">${insight.text}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Export Functions
+        function exportFullReport() {
+            const report = {
+                metadata: {
+                    title: 'GenAI Cybersecurity Research Report',
+                    date: new Date().toISOString(),
+                    totalCases: caseStudies.length,
+                    researchProcess: {
+                        initialResults: 487,
+                        screeningCriteria: 162,
+                        selected: 25
+                    }
+                },
+                statistics: {
+                    averageImprovement: 62,
+                    averageROI: 287,
+                    marketSize2025: 31.48,
+                    marketGrowthCAGR: 24.4
+                },
+                caseStudies: caseStudies,
+                keyFindings: [
+                    'Human-AI collaboration essential for success',
+                    'AI surpassed human experts in March 2025',
+                    'Organizational change as critical as technology',
+                    'Dual-use nature creates security arms race',
+                    'Regulatory frameworks lag technological progress'
+                ]
+            };
+            
+            downloadJSON(report, 'genai-cybersecurity-report.json');
+        }
+        
+        function exportCases() {
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                filters: {
+                    sector: document.getElementById('sectorFilter').value,
+                    technology: document.getElementById('techFilter').value,
+                    useCase: document.getElementById('useCaseFilter').value,
+                    year: document.getElementById('yearFilter').value
+                },
+                cases: filteredCases
+            };
+            
+            downloadJSON(exportData, 'genai-cases-export.json');
+        }
+        
+        function downloadJSON(data, filename) {
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Utility Functions
+        function showTooltip(event, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.left = event.pageX + 10 + 'px';
+            tooltip.style.top = event.pageY - 30 + 'px';
+            tooltip.classList.add('show');
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+        
+        function animateElements() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            document.querySelectorAll('.metric-card, .research-process, .timeline-container, .chart-container').forEach(el => {
+                observer.observe(el);
+            });
+        }
+        
+        // Event Listeners
+        window.addEventListener('resize', function() {
+            // Handle responsive updates
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+        
+        // Keyboard Navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeComparison();
+            }
+        });
+    </script>
+</body>
+</html>
